@@ -1,0 +1,14 @@
+{
+	"properties": [
+		{
+			"name": "spring.smart-retry.mybatis.enabled",
+			"type": "java.lang.Boolean",
+			"description": "enable AmoebaCompatible or not."
+		},
+		{
+			"name": "spring.smart-retry.mybatis.datasource",
+			"type": "java.lang.String",
+			"description": "系统重配置数据源的名称."
+		}
+	]
+}
