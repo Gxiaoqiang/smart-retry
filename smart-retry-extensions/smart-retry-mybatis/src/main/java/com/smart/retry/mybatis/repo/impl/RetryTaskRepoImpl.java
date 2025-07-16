@@ -62,8 +62,10 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
             logger.warn("[RetryTaskRepoImpl-updateRetryTask]retryTask not exists, id:{}", taskId);
             return 0;
         }
+
+        return retryTaskDao.update(retryTask);
         //1.如果是执行中更新，则直接更新
-        if (retryTask.getStatus() == RetryTaskStatus.RUNNING.getCode().intValue()) {
+        /*if (retryTask.getStatus() == RetryTaskStatus.RUNNING.getCode().intValue()) {
             return retryTaskDao.update(retryTask);
         }
         //2.如果是成功或者失败，则更新下次执行时间
@@ -79,7 +81,7 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
         }
 
         logger.warn("[RetryTaskRepoImpl-updateRetryTask]retryTask status not support, retryTask:{}", JSONObject.toJSONString(retryTask));
-        return -1;
+        return -1;*/
     }
 
     @Override

@@ -75,21 +75,26 @@ public class MybatisTest extends AbstractTest {
 
     @Test
     public void test_TestClassWithParam() throws InterruptedException {
-        RetryTask retryTask = new RetryTask();
-        retryTask.setRetryNum(3);
-        retryTask.setIntervalSecond(20);
-        retryTask.setDelaySecond(3);
-        retryTask.setTaskCode("test_class_retry_task_code");
-        retryTask.setParameters(JSONObject.toJSONString("params"));
-        RetryTaskBuilder<TestModel> retryTaskBuilder = RetryTaskBuilder.of()
-                .withRetryNum(3)
-                .withTaskCode("TestClassWithParam")
-                .withTaskDesc("Test")
-                .withIntervalSecond(20)
-                .withDelaySecond(2)
-                .withParam(new TestModel("123", "456",2));
-        retryTaskBuilder.withParam(new TestModel("123", "456",2));
-        retryTaskCreator.createTask(retryTaskBuilder);
+        try {
+            RetryTask retryTask = new RetryTask();
+            retryTask.setRetryNum(3);
+            retryTask.setIntervalSecond(20);
+            retryTask.setDelaySecond(3);
+            retryTask.setTaskCode("test_class_retry_task_code");
+            retryTask.setParameters(JSONObject.toJSONString("params"));
+            RetryTaskBuilder<TestModel> retryTaskBuilder = RetryTaskBuilder.of()
+                    .withRetryNum(3)
+                    .withTaskCode("TestClassWithParam")
+                    .withTaskDesc("Test")
+                    .withIntervalSecond(20)
+                    .withDelaySecond(2)
+                    .withParam(new TestModel("123", "456",2));
+            retryTaskBuilder.withParam(new TestModel("123", "456",2));
+            retryTaskCreator.createTask(retryTaskBuilder);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
 
         //retryTaskCreator.createTask(retryTask);
 

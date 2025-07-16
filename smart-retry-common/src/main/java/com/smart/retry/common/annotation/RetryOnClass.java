@@ -1,5 +1,7 @@
 package com.smart.retry.common.annotation;
 
+import com.smart.retry.common.IRetryCallback;
+import com.smart.retry.common.notify.RetryTaskNotify;
 import org.springframework.stereotype.Component;
 
 import java.lang.annotation.*;
@@ -25,5 +27,6 @@ public @interface RetryOnClass {
 
     String taskDesc() default "";
 
+    Class<? extends RetryTaskNotify>[] retryTaskNotifies() default {};
 
 }

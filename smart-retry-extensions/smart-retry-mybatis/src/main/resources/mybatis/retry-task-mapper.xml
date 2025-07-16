@@ -17,6 +17,7 @@
         <result column="origin_retry_num" jdbcType="INTEGER" property="originRetryNum"/>
         <result column="creator" jdbcType="VARCHAR" property="creator"/>
         <result column="executor" jdbcType="VARCHAR" property="executor"/>
+        <result column="next_plan_time_strategy" javaType="INTEGER" property="nextPlanTimeStrategy"/>
         <result column="attribute" jdbcType="LONGVARCHAR" property="attribute"/>
         <result column="parameters" jdbcType="LONGVARCHAR" property="parameters"/>
         <result column="current_log_id" jdbcType="BIGINT" property="currentLogId"/>
@@ -36,6 +37,7 @@
 		delay_second,
 		next_plan_time,
         origin_retry_num,
+        next_plan_time_strategy,
 		retry_num,
         creator,
         executor,
@@ -117,7 +119,7 @@
                                 task_code, status, interval_second,
                                 delay_second, next_plan_time, retry_num,
                                 attribute, parameters, origin_retry_num,
-                                 current_log_id, creator,executor ,unique_key)
+                                 current_log_id, creator,executor,next_plan_time_strategy ,unique_key)
         values (CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{taskDesc,jdbcType=VARCHAR},
                 #{shardingKey,jdbcType=BIGINT},
                 #{taskCode,jdbcType=VARCHAR}, #{status,jdbcType=TINYINT},
@@ -125,7 +127,7 @@
                 #{delaySecond,jdbcType=INTEGER}, #{nextPlanTime,jdbcType=TIMESTAMP}, #{retryNum,jdbcType=INTEGER},
                 #{attribute,jdbcType=LONGVARCHAR}, #{parameters,jdbcType=LONGVARCHAR},
                 #{originRetryNum},  #{currentLogId}
-                   , #{creator}, #{executor},#{uniqueKey})
+                   , #{creator}, #{executor},#{nextPlanTimeStrategy},#{uniqueKey})
     </insert>
     <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
         SELECT

@@ -12,7 +12,6 @@ import java.util.List;
  */
 public interface RetryTaskNotify {
 
-    List<String> supportRetryTask();
 
     /**
      * 执行一次结果通知

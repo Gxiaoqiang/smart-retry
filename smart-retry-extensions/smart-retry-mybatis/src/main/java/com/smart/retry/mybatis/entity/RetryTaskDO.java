@@ -58,6 +58,16 @@ public class RetryTaskDO extends BaseEntity {
 
     private String uniqueKey;
 
+    private int nextPlanTimeStrategy;
+
+    public int getNextPlanTimeStrategy() {
+        return nextPlanTimeStrategy;
+    }
+
+    public void setNextPlanTimeStrategy(int nextPlanTimeStrategy) {
+        this.nextPlanTimeStrategy = nextPlanTimeStrategy;
+    }
+
     public String getExecutor() {
         return executor;
     }

@@ -1,7 +1,9 @@
 package com.smart.retry.common.annotation;
 
 import com.smart.retry.common.IRetryCallback;
+import com.smart.retry.common.constant.NextPlanTimeStrategyEnum;
 import com.smart.retry.common.constant.RetryOccurType;
+import com.smart.retry.common.notify.RetryTaskNotify;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -53,6 +55,16 @@ public @interface RetryOnMethod {
      */
     int intervalSecond() default 300;
 
+
+    /**
+     * 时间间隔策略
+     * 固定间隔
+     * 增长间隔
+     * 斐波那契间隔
+     * @return
+     */
+    NextPlanTimeStrategyEnum nextPlanTimeStragy() default NextPlanTimeStrategyEnum.FIXED;
+
     /**
      * 任务执行结束后发起回调
      * 如果是多个回调则 按照默认配置的顺序进行执行，各个回调之间不相互影响
@@ -63,5 +75,7 @@ public @interface RetryOnMethod {
 
 
     RetryOccurType occurType() default RetryOccurType.EXCEPTION;
+
+    Class<? extends RetryTaskNotify>[] retryTaskNotifies() default {};
 
 }

@@ -39,6 +39,7 @@ public class RetryTask extends BaseEntity{
     private Integer retryNum;
 
 
+    private Date nextPlanTime;
     /**
      * 任务预计最大执行时间
      */
@@ -61,6 +62,17 @@ public class RetryTask extends BaseEntity{
 
 
     private Long shardingKey;
+
+
+    private int  nextPlanTimeStrategy;
+
+    public int getNextPlanTimeStrategy() {
+        return nextPlanTimeStrategy;
+    }
+
+    public void setNextPlanTimeStrategy(int nextPlanTimeStrategy) {
+        this.nextPlanTimeStrategy = nextPlanTimeStrategy;
+    }
 
     public Long getShardingKey() {
         return shardingKey;
@@ -102,6 +114,13 @@ public class RetryTask extends BaseEntity{
         this.taskDesc = taskDesc;
     }
 
+    public Date getNextPlanTime() {
+        return nextPlanTime;
+    }
+
+    public void setNextPlanTime(Date nextPlanTime) {
+        this.nextPlanTime = nextPlanTime;
+    }
 
     public Integer getIntervalSecond() {
         return intervalSecond;

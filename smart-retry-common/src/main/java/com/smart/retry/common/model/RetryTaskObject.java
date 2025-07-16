@@ -2,7 +2,7 @@ package com.smart.retry.common.model;
 
 import com.smart.retry.common.IRetryCallback;
 import com.smart.retry.common.constant.RetryTaskTypeEnum;
-import com.sun.corba.se.spi.protocol.RetryType;
+import com.smart.retry.common.notify.RetryTaskNotify;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
@@ -51,6 +51,7 @@ public class RetryTaskObject implements Serializable {
 
     private Class<? extends IRetryCallback>[] retryCallback;
 
+    private Class<? extends RetryTaskNotify>[] retryTaskNotify;
 
     private RetryTaskTypeEnum retryType;
 
@@ -100,6 +101,14 @@ public class RetryTaskObject implements Serializable {
         return this;
     }
 
+    public Class<? extends RetryTaskNotify>[] getRetryTaskNotify() {
+        return retryTaskNotify;
+    }
+
+public RetryTaskObject withRetryTaskNotify(Class<? extends RetryTaskNotify>[] retryTaskNotify) {
+        this.retryTaskNotify = retryTaskNotify;
+        return this;
+    }
 
     public Object getTargetObj() {
         return targetObj;

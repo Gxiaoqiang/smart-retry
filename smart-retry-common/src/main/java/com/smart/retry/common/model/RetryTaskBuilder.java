@@ -1,5 +1,7 @@
 package com.smart.retry.common.model;
 
+import com.smart.retry.common.constant.NextPlanTimeStrategyEnum;
+
 import java.io.Serializable;
 
 /**
@@ -35,6 +37,7 @@ public class RetryTaskBuilder<T> implements Serializable {
     private Integer retryNum;
 
 
+    private NextPlanTimeStrategyEnum nextPlanTimeStrategy = NextPlanTimeStrategyEnum.FIXED;
 
     private T param;
 
@@ -90,6 +93,14 @@ public class RetryTaskBuilder<T> implements Serializable {
     public RetryTaskBuilder withDelaySecond(int delaySecond) {
         this.delaySecond = delaySecond;
         return this;
+    }
+
+    public RetryTaskBuilder withNextPlanTimeStrategy(NextPlanTimeStrategyEnum nextPlanTimeStrategy) {
+        this.nextPlanTimeStrategy = nextPlanTimeStrategy;
+        return this;
+    }
+    public NextPlanTimeStrategyEnum getNextPlanTimeStrategy() {
+        return nextPlanTimeStrategy;
     }
 
     public String getTaskCode() {
