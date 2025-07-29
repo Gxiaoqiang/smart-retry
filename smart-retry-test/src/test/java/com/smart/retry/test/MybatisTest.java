@@ -67,6 +67,8 @@ public class MybatisTest extends AbstractTest {
                 new TestModel("789", "456",3)));
         retryTaskCreator.createTask(retryTaskBuilder);
 
+        TimeUnit.SECONDS.sleep(1000);
+
         //retryTaskCreator.createTask(retryTask);
 
         //retryTaskCreator.createTask(testRetry, "testException", new Object[]{}, new Class[]{});

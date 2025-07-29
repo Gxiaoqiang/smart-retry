@@ -10,7 +10,7 @@ import com.smart.retry.common.constant.ExecuteResultStatus;
  * @Description: TODO
  */
 
-@RetryOnClass(taskCode = "test_class_retry_task_code")
+@RetryOnClass(taskCode = "test_class_retry_task_code",retryTaskNotifies = {NotifyTest.class})
 public class TestClassRetry extends RetryLinstener<String> {
     @Override
     public ExecuteResultStatus consume(String param) {

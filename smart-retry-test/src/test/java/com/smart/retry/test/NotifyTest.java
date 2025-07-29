@@ -17,10 +17,12 @@ public class NotifyTest implements RetryTaskNotify {
     @Override
     public void oneTimeNotify(NotifyContext context) {
 
+        System.out.println("oneTimeNotify");
     }
 
     @Override
     public void finishTaskNotify(NotifyContext context) {
 
+        System.out.println("finishTaskNotify");
     }
 }

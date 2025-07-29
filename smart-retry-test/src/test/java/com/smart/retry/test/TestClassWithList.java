@@ -12,7 +12,7 @@ import java.util.List;
  * @Version TestClassWithList.java, v 0.1 2025年02月21日 15:17 xiaoqiang
  * @Description: TODO
  */
-@RetryOnClass(taskCode = "TestClassWithList")
+@RetryOnClass(taskCode = "TestClassWithList",retryTaskNotifies = {NotifyTest.class})
 public class TestClassWithList extends RetryLinstener<List<TestModel>> {
 
 
