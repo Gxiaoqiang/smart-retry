@@ -10,7 +10,8 @@ public enum NextPlanTimeStrategyEnum {
     FIXED(1,"固定间隔"),
     INCREMENTING(2,"递增"),
 
-    FIBONACCI(3,"斐波那契");
+    FIBONACCI(3,"斐波那契"),
+    BACKOFF(4,"退避"),;
     private int code;
     private String desc;
 

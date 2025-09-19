@@ -105,6 +105,5 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
         query.setOffset(0);
         query.setLimit(1000);
         return retryTaskDao.selectByQuery(query);
-
     }
 }

@@ -8,6 +8,7 @@ import com.smart.retry.common.RetryTaskHeart;
 import com.smart.retry.core.CommonConfiguration;
 import com.smart.retry.core.HeartbeatContainer;
 import com.smart.retry.core.SimpleContainer;
+import com.smart.retry.core.config.SmartExecutorConfigure;
 import com.smart.retry.mybatis.access.MybatisAccess;
 import com.smart.retry.mybatis.config.SmartConfigure;
 import com.smart.retry.mybatis.dao.RetryShardingDao;
@@ -118,10 +119,10 @@ public class MybatisAutoConfiguration extends CommonConfiguration
         return new HeartbeatContainer(retryTaskHeart);
     }
     @Bean(initMethod = "start")
-    public RetryContainer retryContainer(HeartbeatContainer heartbeatContainer,
-            RetryConfiguration configuration) {
+    public RetryContainer retryContainer(SmartExecutorConfigure smartExecutorConfigure, HeartbeatContainer heartbeatContainer,
+                                         RetryConfiguration configuration) {
         LOGGER.warn("[MybatisAutoConfiguration#retryContainer] retryContainer init");
-        return new SimpleContainer(configuration);
+        return new SimpleContainer(configuration,smartExecutorConfigure);
     }
 
 }

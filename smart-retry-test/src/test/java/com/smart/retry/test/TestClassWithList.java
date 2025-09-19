@@ -16,10 +16,16 @@ import java.util.List;
 public class TestClassWithList extends RetryLinstener<List<TestModel>> {
 
 
+    private static int count = 0;
+
+
     @Override
     public ExecuteResultStatus consume(List<TestModel> param) {
 
-        System.out.println(JSONObject.toJSONString(param));
-        return null;
+
+
+        System.out.println(System.currentTimeMillis()/1000+":"+(count++)+":"+JSONObject.toJSONString(param));
+
+        return ExecuteResultStatus.FAIL;
     }
 }
