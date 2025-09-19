@@ -6,6 +6,7 @@ import com.smart.retry.common.annotation.RetryOnClass;
 import com.smart.retry.common.constant.ExecuteResultStatus;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @Author xiaoqiang
@@ -22,7 +23,11 @@ public class TestClassWithList extends RetryLinstener<List<TestModel>> {
     @Override
     public ExecuteResultStatus consume(List<TestModel> param) {
 
-
+        try {
+            TimeUnit.SECONDS.sleep(15);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         System.out.println(System.currentTimeMillis()/1000+":"+(count++)+":"+JSONObject.toJSONString(param));
 
