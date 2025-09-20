@@ -115,9 +115,10 @@ public class MybatisHeart implements RetryTaskHeart {
                     shardingIds.add(retryShardingDO.getId());
                 });
                 ShardingContextHolder.initShardingIndex(shardingIds);
-                LOGGER.info("[MybatisHeart#scrambleDeadSharding] scrambleDeadSharding success, instanceId:{}, shardingCount:{}", instanceId, shardingCount);
+                if(LOGGER.isDebugEnabled()){
+                    LOGGER.debug("[MybatisHeart#scrambleDeadSharding] scrambleDeadSharding success, instanceId:{}, shardingCount:{}", instanceId, shardingCount);
+                }
             } catch (Exception e) {
-                e.printStackTrace();
                 LOGGER.error("[MybatisHeart#scrambleDeadSharding] scrambleDeadSharding error，instanceId:{}", instanceId, e);
             }
         }, 1, 5, TimeUnit.SECONDS);

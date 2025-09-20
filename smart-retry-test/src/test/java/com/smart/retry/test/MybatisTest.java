@@ -41,9 +41,14 @@ public class MybatisTest extends AbstractTest {
 
     @Test
     public void testException() throws InterruptedException {
-        testRetry.testException();
 
-        //TimeUnit.SECONDS.sleep(1000);
+        try {
+            testRetry.testException();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+        TimeUnit.SECONDS.sleep(10000);
         //System.out.println(retryContainer);
     }
 

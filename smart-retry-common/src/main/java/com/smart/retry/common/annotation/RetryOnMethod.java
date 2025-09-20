@@ -40,7 +40,7 @@ public @interface RetryOnMethod {
      * 最大的重试次数
      * @return
      */
-    int maxAttempt() default 1;
+    int maxAttempt() default 3;
 
 
     /**
@@ -53,7 +53,7 @@ public @interface RetryOnMethod {
      * 间隔时间
      * @return
      */
-    int intervalSecond() default 300;
+    int intervalSecond() default 180;
 
 
     /**
