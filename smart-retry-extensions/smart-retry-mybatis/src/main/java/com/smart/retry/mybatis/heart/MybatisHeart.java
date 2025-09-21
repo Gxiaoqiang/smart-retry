@@ -83,7 +83,9 @@ public class MybatisHeart implements RetryTaskHeart {
         heartbeatExecutorService.scheduleAtFixedRate(() -> {
             try {
                int heartBeatCount = retryShardingRepo.updateLastHeartbeat(instanceId, 1);
-                LOGGER.info("[MybatisHeart#heartBeat] heart beat success, instanceId:{}, heartBeatCount:{}", instanceId, heartBeatCount);
+               if(LOGGER.isDebugEnabled()){
+                   LOGGER.debug("[MybatisHeart#heartBeat] heart beat success, instanceId:{}, heartBeatCount:{}", instanceId, heartBeatCount);
+               }
             } catch (Exception e) {
                 LOGGER.error("[MybatisHeart#heartBeat] heart beat error，instanceId:{}", instanceId, e);
             }

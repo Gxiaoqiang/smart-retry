@@ -18,11 +18,7 @@ public class TestClassWithParam extends RetryLinstener<TestModel> {
     @Override
     public ExecuteResultStatus consume(TestModel param) {
 
-        try {
-            TimeUnit.SECONDS.sleep(15);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+
         System.out.println("TestClassWithParam consume param: " + JSONObject.toJSONString(param));
         return null;
     }

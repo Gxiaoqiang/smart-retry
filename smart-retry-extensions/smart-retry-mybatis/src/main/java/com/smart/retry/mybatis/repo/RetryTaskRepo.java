@@ -3,6 +3,7 @@ package com.smart.retry.mybatis.repo;
 import com.smart.retry.mybatis.entity.RetryTaskDO;
 import com.smart.retry.mybatis.entity.query.RetryTaskQuery;
 
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -21,5 +22,8 @@ public interface RetryTaskRepo {
     RetryTaskDO getRetryTask(long id);
 
     List<RetryTaskDO> listAllWaitingRetryTask();
+
+
+    List<RetryTaskDO> listAllDeadTask(Date deadTaskTime);
 
 }

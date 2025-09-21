@@ -68,6 +68,16 @@ public class RetryTaskQuery {
 
     private Date nextPlanTime;
 
+    private Date deadTaskTime;
+
+    public Date getDeadTaskTime() {
+        return deadTaskTime;
+    }
+
+    public void setDeadTaskTime(Date deadTaskTime) {
+        this.deadTaskTime = deadTaskTime;
+    }
+
     public Date getNextPlanTime() {
         return nextPlanTime;
     }

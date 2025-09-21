@@ -92,6 +92,10 @@
             <if test="maxRetryNum!=null">
                 AND retry_num &lt;= #{maxRetryNum}
             </if>
+            <!-- 如果deadTaskTime不为空，则查询dead状态的任务  -->
+            <if test="deadTaskTime!=null">
+                AND gmt_modified &lt; #{deadTaskTime}
+            </if>
             <if test="originRetryNum!=null">
                 AND origin_retry_num = #{originRetryNum}
             </if>

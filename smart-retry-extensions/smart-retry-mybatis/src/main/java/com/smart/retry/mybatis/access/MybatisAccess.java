@@ -11,6 +11,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -19,7 +20,6 @@ import java.util.List;
  * @Description: TODO
  */
 public class MybatisAccess implements RetryTaskAccess {
-
 
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MybatisAccess.class);
@@ -31,16 +31,36 @@ public class MybatisAccess implements RetryTaskAccess {
         this.retryTaskRepo = retryTaskRepo;
     }
 
+
     @Override
-    public List<RetryTask> listRetryTask() {
-        List<RetryTaskDO> retryTaskDOS = retryTaskRepo.listAllWaitingRetryTask();
-        if(CollectionUtils.isEmpty(retryTaskDOS)){
+    public List<RetryTask> listDeadTask(int maxExecuteTime) {
+        long currentTime = System.currentTimeMillis();
+
+        Date deadTaskTime = new Date(currentTime - maxExecuteTime * 1000);
+
+        List<RetryTaskDO> retryTaskDOS = retryTaskRepo.listAllDeadTask(deadTaskTime);
+        if (CollectionUtils.isEmpty(retryTaskDOS)) {
             return Collections.emptyList();
         }
         List<RetryTask> retryTasks = new ArrayList<>(retryTaskDOS.size());
         for (RetryTaskDO retryTask : retryTaskDOS) {
             RetryTask retryTaskDo = new RetryTask();
-            BeanUtils.copyProperties(retryTask,retryTaskDo);
+            BeanUtils.copyProperties(retryTask, retryTaskDo);
+            retryTasks.add(retryTaskDo);
+        }
+        return retryTasks;
+    }
+
+    @Override
+    public List<RetryTask> listRetryTask() {
+        List<RetryTaskDO> retryTaskDOS = retryTaskRepo.listAllWaitingRetryTask();
+        if (CollectionUtils.isEmpty(retryTaskDOS)) {
+            return Collections.emptyList();
+        }
+        List<RetryTask> retryTasks = new ArrayList<>(retryTaskDOS.size());
+        for (RetryTaskDO retryTask : retryTaskDOS) {
+            RetryTask retryTaskDo = new RetryTask();
+            BeanUtils.copyProperties(retryTask, retryTaskDo);
             retryTasks.add(retryTaskDo);
         }
         return retryTasks;
@@ -49,14 +69,14 @@ public class MybatisAccess implements RetryTaskAccess {
     @Override
     public void saveRetryTask(RetryTask retryTask) {
         RetryTaskDO retryTaskDO = new RetryTaskDO();
-        BeanUtils.copyProperties(retryTask,retryTaskDO);
-         retryTaskRepo.saveRetryTask(retryTaskDO);
+        BeanUtils.copyProperties(retryTask, retryTaskDO);
+        retryTaskRepo.saveRetryTask(retryTaskDO);
     }
 
     @Override
     public void updateRetryTask(RetryTask retryTask) {
         RetryTaskDO retryTaskDO = new RetryTaskDO();
-        BeanUtils.copyProperties(retryTask,retryTaskDO);
+        BeanUtils.copyProperties(retryTask, retryTaskDO);
         retryTaskRepo.updateRetryTask(retryTaskDO);
 
     }

@@ -23,14 +23,14 @@ public class TestClassWithList extends RetryLinstener<List<TestModel>> {
     @Override
     public ExecuteResultStatus consume(List<TestModel> param) {
 
-        try {
+        /*try {
             TimeUnit.SECONDS.sleep(15);
         } catch (InterruptedException e) {
             e.printStackTrace();
-        }
+        }*/
 
         System.out.println(System.currentTimeMillis()/1000+":"+(count++)+":"+JSONObject.toJSONString(param));
 
-        return ExecuteResultStatus.FAIL;
+        return ExecuteResultStatus.SUCCESS;
     }
 }

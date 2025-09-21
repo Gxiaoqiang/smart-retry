@@ -45,7 +45,7 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
             logger.warn("[RetryTaskRepoImpl-saveRetryTask]uniqueKey:{} already exists, skip insert", uniqueKey);
             return;
         }
-        long nextTime = System.currentTimeMillis() +  retryTask.getDelaySecond() * 1000;
+        long nextTime = System.currentTimeMillis() + retryTask.getDelaySecond() * 1000;
         retryTask.setNextPlanTime(new Date(nextTime));
         retryTask.setOriginRetryNum(retryTask.getRetryNum());
         retryTask.setCreator(IpUtils.getIp());
@@ -89,16 +89,37 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
         return retryTaskDao.selectById(id);
     }
 
+    //获取所有执行中的任务，并且超过最大的执行时间
     @Override
-    public List<RetryTaskDO> listAllWaitingRetryTask() {
-        RetryTaskQuery query  = new RetryTaskQuery();
+    public List<RetryTaskDO> listAllDeadTask(Date deadTaskTime) {
+        RetryTaskQuery query = new RetryTaskQuery();
         //如果获取不到分区，则返回空列表，不执行任何重试任务
         List<Long> shardingKeyList = ShardingContextHolder.shardingIndex();
-        if(CollectionUtils.isEmpty(shardingKeyList)){
+        if (CollectionUtils.isEmpty(shardingKeyList)) {
+            return Lists.newArrayList();
+        }
+        long currentTime = System.currentTimeMillis();
+        //Date deadTaskTime = new Date(currentTime - maxExecuteTime * 1000);
+        query.setDeadTaskTime(deadTaskTime);
+        query.setStatusList(Lists.newArrayList(RetryTaskStatus.RUNNING.getCode()));
+        query.setOffset(0);
+        query.setLimit(1000);
+
+        return retryTaskDao.selectByQuery(query);
+
+
+    }
+
+    @Override
+    public List<RetryTaskDO> listAllWaitingRetryTask() {
+        RetryTaskQuery query = new RetryTaskQuery();
+        //如果获取不到分区，则返回空列表，不执行任何重试任务
+        List<Long> shardingKeyList = ShardingContextHolder.shardingIndex();
+        if (CollectionUtils.isEmpty(shardingKeyList)) {
             return Lists.newArrayList();
         }
         query.setShardingKeyList(ShardingContextHolder.shardingIndex());
-        query.setStatusList(Lists.newArrayList(RetryTaskStatus.WAITING.getCode(),RetryTaskStatus.FAIL.getCode()));
+        query.setStatusList(Lists.newArrayList(RetryTaskStatus.WAITING.getCode(), RetryTaskStatus.FAIL.getCode()));
         query.setMinRetryNum(1);
         query.setMaxNextPlanTime(new Date());
         //默认查询1000条数据

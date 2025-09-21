@@ -11,6 +11,12 @@ import java.util.List;
  */
 public interface RetryTaskAccess {
 
+
+    /**
+     * 获取所有死任务 执行时间超过设置的最大的执行时间
+     * @return
+     */
+    List<RetryTask> listDeadTask(int maxExecuteTime);
     /**
      * 获取所有待重试任务
      * @return

@@ -67,7 +67,7 @@ public class MybatisTest extends AbstractTest {
                 .withRetryNum(3)
                 .withTaskCode("TestClassWithList")
                 .withTaskDesc("Test")
-                .withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.FIXED)
+                .withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.BACKOFF)
                 .withIntervalSecond(10)
                 .withDelaySecond(2);
         retryTaskBuilder.withParam(Lists.newArrayList(new TestModel("123", "456",2),

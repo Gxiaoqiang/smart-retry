@@ -21,7 +21,7 @@ public class NotifyTest implements RetryTaskNotify {
     }
 
     @Override
-    public void finishTaskNotify(NotifyContext context) {
+    public void allRetryTaskFinishNotify(NotifyContext context) {
 
         System.out.println("finishTaskNotify");
     }
