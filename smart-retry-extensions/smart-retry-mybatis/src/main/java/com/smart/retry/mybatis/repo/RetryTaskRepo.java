@@ -26,4 +26,7 @@ public interface RetryTaskRepo {
 
     List<RetryTaskDO> listAllDeadTask(Date deadTaskTime);
 
+
+    int deleteRetryTask(long taskId);
+
 }

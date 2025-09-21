@@ -64,24 +64,6 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
         }
 
         return retryTaskDao.update(retryTask);
-        //1.如果是执行中更新，则直接更新
-        /*if (retryTask.getStatus() == RetryTaskStatus.RUNNING.getCode().intValue()) {
-            return retryTaskDao.update(retryTask);
-        }
-        //2.如果是成功或者失败，则更新下次执行时间
-        //3.如果是失败，如果还有重试次数，则更新为等待状态。如果已经达到最大重试次数，则更新为失败状态。
-        if (retryTask.getStatus() == RetryTaskStatus.SUCCESS.getCode().intValue()
-                ||retryTask.getStatus() == RetryTaskStatus.FAIL.getCode().intValue()) {
-            long nextTime = oldTask.getNextPlanTime().getTime() + oldTask.getIntervalSecond() * 1000;
-            retryTask.setNextPlanTime(new Date(nextTime));
-            if (retryTask.getRetryNum() >= 1) {
-                retryTask.setRetryNum(retryTask.getRetryNum() - 1);
-            }
-            return retryTaskDao.update(retryTask);
-        }
-
-        logger.warn("[RetryTaskRepoImpl-updateRetryTask]retryTask status not support, retryTask:{}", JSONObject.toJSONString(retryTask));
-        return -1;*/
     }
 
     @Override
@@ -108,6 +90,11 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
         return retryTaskDao.selectByQuery(query);
 
 
+    }
+
+    @Override
+    public int deleteRetryTask(long taskId) {
+        return retryTaskDao.deleteById(taskId );
     }
 
     @Override

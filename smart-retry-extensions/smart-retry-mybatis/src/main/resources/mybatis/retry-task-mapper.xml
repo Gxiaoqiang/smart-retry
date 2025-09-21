@@ -211,5 +211,10 @@
         where id = #{id,jdbcType=BIGINT}
     </update>
 
+    <delete id="deleteById" parameterType="java.lang.Long">
+            delete
+            from retry_task
+            where id = #{id}
+    </delete>
 
 </mapper>

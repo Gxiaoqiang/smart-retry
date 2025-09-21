@@ -26,4 +26,7 @@ public interface RetryTaskDao {
 
     RetryTaskDO selectById(Long id);
 
+
+    int deleteById(Long id);
+
 }
