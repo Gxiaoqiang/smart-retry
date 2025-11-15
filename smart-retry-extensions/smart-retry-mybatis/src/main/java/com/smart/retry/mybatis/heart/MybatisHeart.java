@@ -15,6 +15,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * @Author xiaoqiang
@@ -66,9 +67,10 @@ public class MybatisHeart implements RetryTaskHeart {
             long shardingId = retryShardingRepo.saveRetrySharding(retryShardingDO);
             shardingIds.add(shardingId);
         }else{
-            retryShardingDOS.forEach(retryShardingDO -> {
-                shardingIds.add(retryShardingDO.getId());
-            });
+            List<Long> existShardingIds = retryShardingDOS.stream()
+                    .map(RetryShardingDO::getId)
+                    .collect(Collectors.toList());
+            shardingIds.addAll(existShardingIds);
         }
         ShardingContextHolder.initShardingIndex(shardingIds);
     }

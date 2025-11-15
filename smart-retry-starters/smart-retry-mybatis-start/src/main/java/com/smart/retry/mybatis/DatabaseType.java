@@ -49,7 +49,8 @@ public enum DatabaseType {
             }
         } catch (SQLException e) {
             // 处理异常
-            e.printStackTrace();
+            //e.printStackTrace();
+            throw new RuntimeException("Failed to determine database type", e);
         }
         return UNKNOWN;
     }
