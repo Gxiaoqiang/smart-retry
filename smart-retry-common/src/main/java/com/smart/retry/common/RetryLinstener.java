@@ -29,6 +29,13 @@ public abstract  class RetryLinstener<T> {
         }
     }
 
+    /**
+     * 消费
+     * 返回或者SUCCESS或者null表示消费成功，
+     * 抛异常或者FAIL表示消费失败
+     * @param param
+     * @return
+     */
     public abstract ExecuteResultStatus consume(T param);
 
     public void beforeConsume(T context) {

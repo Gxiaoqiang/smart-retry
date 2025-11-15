@@ -59,20 +59,17 @@ public class MybatisHeart implements RetryTaskHeart {
 
         //2.初始化sharding
         List<RetryShardingDO> retryShardingDOS = retryShardingRepo.selectByInstanceId(instanceId);
-        List<Long> shardingIds = Lists.newArrayList();
         if(CollectionUtils.isEmpty(retryShardingDOS)){
             RetryShardingDO retryShardingDO = new RetryShardingDO();
             retryShardingDO.setIntanceId(instanceId);
             retryShardingDO.setLastHeartbeat(new Date());
-            long shardingId = retryShardingRepo.saveRetrySharding(retryShardingDO);
-            shardingIds.add(shardingId);
-        }else{
-            List<Long> existShardingIds = retryShardingDOS.stream()
-                    .map(RetryShardingDO::getId)
-                    .collect(Collectors.toList());
-            shardingIds.addAll(existShardingIds);
+            retryShardingRepo.saveRetrySharding(retryShardingDO);
+            retryShardingDOS = retryShardingRepo.selectByInstanceId(instanceId);
         }
-        ShardingContextHolder.initShardingIndex(shardingIds);
+        List<Long> existShardingIds = retryShardingDOS.stream()
+                .map(RetryShardingDO::getId)
+                .collect(Collectors.toList());
+        ShardingContextHolder.initShardingIndex(existShardingIds);
     }
 
 
