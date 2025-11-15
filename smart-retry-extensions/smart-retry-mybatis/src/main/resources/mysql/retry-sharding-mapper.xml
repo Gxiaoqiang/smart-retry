@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.retry.mybatis.dao.RetryShardingDao">
+
+	<resultMap id="RetryTaskMAP" type="com.smart.retry.mybatis.entity.RetryShardingDO">
+		<result column="id" property="id"/>
+		<result column="gmt_create" property="gmtCreate"/>
+		<result column="instance_id" property="intanceId"/>
+		<result column="status" property="status"/>
+		<result column="last_heartbeat" property="lastHeartbeat"/>
+	</resultMap>
+
+	<sql id="all_column">
+		id,
+		gmt_create,
+		instance_id,
+		status,
+		last_heartbeat
+	</sql>
+
+	<insert id="insert">
+		INSERT INTO retry_sharding (
+			gmt_create,
+			instance_id,
+			status,
+			last_heartbeat)
+		VALUES (now(),
+				#{intanceId},
+				#{status},
+				#{lastHeartbeat})
+	</insert>
+
+	<select id="selectByInstanceId"
+			parameterType="java.lang.String"
+			resultMap="RetryTaskMAP">
+		SELECT <include refid="all_column"/>
+		    FROM retry_sharding
+		WHERE instance_id = #{instanceId}
+	</select>
+
+
+    <update id="scrambleDeadSharding" >
+        UPDATE retry_sharding rs
+        JOIN (
+        SELECT id
+        FROM retry_sharding
+        WHERE last_heartbeat &lt; (NOW() - INTERVAL 180 SECOND)
+        ) AS tmp
+        SET
+        rs.status = #{status},
+        rs.instance_id = #{instanceId},
+        rs.last_heartbeat = NOW()
+        WHERE rs.id = tmp.id
+    </update>
+
+
+
+	<update id="updateLastHeartbeat">
+		UPDATE retry_sharding
+		SET
+		last_heartbeat = now(),
+		status = #{status}
+		WHERE
+		instance_id = #{instanceId}
+	</update>
+
+
+</mapper>

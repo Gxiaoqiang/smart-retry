@@ -18,12 +18,15 @@ import com.smart.retry.mybatis.repo.RetryShardingRepo;
 import com.smart.retry.mybatis.repo.RetryTaskRepo;
 import com.smart.retry.mybatis.repo.impl.RetryShardingRepoImpl;
 import com.smart.retry.mybatis.repo.impl.RetryTaskRepoImpl;
+import org.apache.ibatis.mapping.DatabaseIdProvider;
+import org.apache.ibatis.mapping.VendorDatabaseIdProvider;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
@@ -31,12 +34,17 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
+import java.util.Properties;
 
 /**
  * @author gwq
@@ -65,6 +73,11 @@ public class MybatisAutoConfiguration extends CommonConfiguration
     }
 
     @Bean
+    @Primary
+    public SmartExecutorConfigure smartExecutorConfigure() {
+        return new SmartExecutorConfigure();
+    }
+    @Bean
     public MapperScannerConfigurer mapperScannerConfigurer() {
         MapperScannerConfigurer scannerConfigurer = new MapperScannerConfigurer();
         scannerConfigurer.setSqlSessionFactoryBeanName("smartRetrySqlSessionFactory"); // 设置 SqlSessionFactoryBean 的名称
@@ -81,15 +94,33 @@ public class MybatisAutoConfiguration extends CommonConfiguration
         if(smartConfigure == null||smartConfigure.getDatasource() == null) {
             throw new IllegalArgumentException("spring.smart-retry.mybatis.datasource is not configured");
         }
+        DataSource dataSource =  (DataSource)applicationContext.getBean(smartConfigure.getDatasource());
 
-        sqlSessionFactoryBean.setDataSource((DataSource)applicationContext.getBean(smartConfigure.getDatasource()));
+        sqlSessionFactoryBean.setDataSource(dataSource);
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-        Resource resource = resolver.getResource("classpath:smart-mybatis-config.xml");
+        DatabaseType dbType = DatabaseType.fromDataSource(dataSource);
+
+        if(dbType.getResource()== null){
+            throw new IllegalArgumentException("database type is not supported");
+        }
+
+        Resource resource = resolver.getResource(dbType.getResource());
         sqlSessionFactoryBean.setConfigLocation(resource);
         return sqlSessionFactoryBean.getObject();
     }
 
 
+
+
+    @Bean
+    public DatabaseIdProvider databaseIdProvider() {
+        DatabaseIdProvider provider = new VendorDatabaseIdProvider();
+        Properties properties = new Properties();
+        properties.setProperty("MySQL", "mysql");
+        properties.setProperty("PostgreSQL", "postgresql");
+        provider.setProperties(properties);
+        return provider;
+    }
 
     @Bean
     public RetryShardingRepo retryShardingRepo(RetryShardingDao retryShardingDao) {
@@ -113,16 +144,20 @@ public class MybatisAutoConfiguration extends CommonConfiguration
     public RetryTaskAccess retryTaskAccess(RetryTaskRepo retryTaskRepo) {
         return new MybatisAccess(retryTaskRepo);
     }
-    @Bean(initMethod = "start")
+    @Bean
     public HeartbeatContainer heartbeatContainer(RetryTaskHeart retryTaskHeart) {
         LOGGER.warn("[MybatisAutoConfiguration#heartbeatContainer] heartbeatContainer init");
-        return new HeartbeatContainer(retryTaskHeart);
+        HeartbeatContainer retryContainer = new HeartbeatContainer(retryTaskHeart);
+        retryContainer.start();
+        return retryContainer;
     }
-    @Bean(initMethod = "start")
+    @Bean
     public RetryContainer retryContainer(SmartExecutorConfigure smartExecutorConfigure, HeartbeatContainer heartbeatContainer,
                                          RetryConfiguration configuration) {
         LOGGER.warn("[MybatisAutoConfiguration#retryContainer] retryContainer init");
-        return new SimpleContainer(configuration,smartExecutorConfigure);
+        RetryContainer retryContainer = new SimpleContainer(configuration,smartExecutorConfigure);
+        retryContainer.start();
+        return retryContainer;
     }
 
 }

@@ -146,7 +146,7 @@
         WHERE
         <include refid="baseSelectSql"/>
         order by id desc
-        LIMIT #{offset}, #{limit}
+        LIMIT #{limit} offset #{offset}
     </select>
     <select id="countByQuery" parameterType="com.smart.retry.mybatis.entity.query.RetryTaskQuery"
             resultType="java.lang.Integer">

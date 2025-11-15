@@ -13,8 +13,8 @@
     <artifactId>smart-retry-test</artifactId>
 
     <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <dependencies>
@@ -108,10 +108,14 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+            <version>5.3.20</version>
+        </dependency>
+        <dependency>
             <groupId>com.smart.retry</groupId>
             <artifactId>smart-retry-mybatis-start</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
-            <scope>compile</scope>
+            <version>1.0.0</version>
         </dependency>
 
     </dependencies>

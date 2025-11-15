@@ -12,19 +12,19 @@
 	</resultMap>
 
 	<sql id="all_column">
-		`id`,
-		`gmt_create`,
-		`instance_id`,
-		`status`,
-		`last_heartbeat`
+		id,
+		gmt_create,
+		instance_id,
+		status,
+		last_heartbeat
 	</sql>
 
 	<insert id="insert">
 		INSERT INTO retry_sharding (
-			`gmt_create`,
-			`instance_id`,
-			`status`,
-			`last_heartbeat`)
+			gmt_create,
+			instance_id,
+			status,
+			last_heartbeat)
 		VALUES (now(),
 				#{intanceId},
 				#{status},
@@ -39,19 +39,22 @@
 		WHERE instance_id = #{instanceId}
 	</select>
 
-	<update id="scrambleDeadSharding" >
-		UPDATE retry_sharding rs
-		JOIN (
-		SELECT id
-		FROM retry_sharding
-		WHERE  last_heartbeat &lt; (NOW() - INTERVAL 180 SECOND)
-		) AS tmp
-		SET
-		rs.status = #{status},
-		rs.instance_id = #{instanceId},
-		rs.last_heartbeat = NOW()
-		where rs.id = tmp.id
-	</update>
+
+
+    <!-- 兼容 PostgreSQL -->
+    <update id="scrambleDeadSharding" >
+        UPDATE retry_sharding
+        SET
+        status = #{status},
+        instance_id = #{instanceId},
+        last_heartbeat = NOW()
+        FROM (
+        SELECT id
+        FROM retry_sharding
+        WHERE last_heartbeat &lt; (NOW() - INTERVAL '180 seconds')
+        ) AS tmp
+        WHERE retry_sharding.id = tmp.id
+    </update>
 
 
 	<update id="updateLastHeartbeat">

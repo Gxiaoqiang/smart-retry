@@ -18,8 +18,8 @@
     </typeHandlers>
 
     <mappers>
-        <mapper resource="mybatis/retry-sharding-mapper.xml"/>
-        <mapper resource="mybatis/retry-task-mapper.xml"/>
+        <mapper resource="mysql/retry-sharding-mapper.xml"/>
+        <mapper resource="mysql/retry-task-mapper.xml"/>
     </mappers>
 
 

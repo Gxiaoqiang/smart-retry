@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.smart.retry</groupId>
   <artifactId>smart-retry-mybatis-start</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <description>smart-retry is a retry framework based on Spring AOP and AspectJ.</description>
   <licenses>
     <license>
@@ -23,13 +23,13 @@
     <dependency>
       <groupId>com.smart.retry</groupId>
       <artifactId>smart-retry-common</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <version>1.0.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.smart.retry</groupId>
       <artifactId>smart-retry-core</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <version>1.0.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -47,7 +47,7 @@
     <dependency>
       <groupId>com.smart.retry</groupId>
       <artifactId>smart-retry-mybatis</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <version>1.0.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>

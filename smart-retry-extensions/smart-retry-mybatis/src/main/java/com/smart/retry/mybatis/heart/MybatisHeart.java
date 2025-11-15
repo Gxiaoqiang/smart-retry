@@ -2,6 +2,7 @@ package com.smart.retry.mybatis.heart;
 
 import com.google.common.collect.Lists;
 import com.smart.retry.common.RetryTaskHeart;
+import com.smart.retry.common.SmartRtryExit;
 import com.smart.retry.common.utils.IpUtils;
 import com.smart.retry.core.ShardingContextHolder;
 import com.smart.retry.mybatis.entity.RetryShardingDO;
@@ -13,8 +14,6 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -26,28 +25,28 @@ public class MybatisHeart implements RetryTaskHeart {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MybatisHeart.class);
 
-    private RetryShardingRepo retryShardingRepo; ;
+    private RetryShardingRepo retryShardingRepo;
 
-    private static ScheduledExecutorService heartbeatExecutorService;
 
-    private static ScheduledExecutorService scheduledExecutorService;
+    private static volatile Boolean flag = true;
 
     public MybatisHeart(RetryShardingRepo retryShardingRepo) {
         this.retryShardingRepo = retryShardingRepo;
     }
 
+
+    public void destroy() {
+        flag = false;
+    }
+
     static {
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
-                if(heartbeatExecutorService!= null){
-                    heartbeatExecutorService.shutdown();
-                }
-                if(scheduledExecutorService!= null){
-                    scheduledExecutorService.shutdown();
-                }
+                flag = false;
             }
         });
     }
+
     /**
      * 初始化心跳
      */
@@ -74,24 +73,60 @@ public class MybatisHeart implements RetryTaskHeart {
         ShardingContextHolder.initShardingIndex(shardingIds);
     }
 
+
+    class HeartbeatTask implements Runnable {
+        @Override
+        public void run() {
+            String instanceId = IpUtils.getIp();
+
+            while (SmartRtryExit.isExit()){
+                try {
+                    TimeUnit.SECONDS.sleep(3);
+                    int heartBeatCount = retryShardingRepo.updateLastHeartbeat(instanceId, 1);
+                    if(LOGGER.isDebugEnabled()){
+                        LOGGER.debug("[MybatisHeart#heartBeat] heart beat success, instanceId:{}, heartBeatCount:{}", instanceId, heartBeatCount);
+                    }
+
+                } catch (Exception e) {
+                    LOGGER.error("[MybatisHeart#heartBeat] heart beat error，instanceId:{}", instanceId, e);
+                }
+            }
+        }
+    }
+
+    class ScrambleDeadShardingTask implements Runnable {
+        @Override
+        public void run() {
+            String instanceId = IpUtils.getIp();
+
+            while (SmartRtryExit.isExit()){
+                try {
+                    TimeUnit.SECONDS.sleep(5);
+                    int shardingCount = retryShardingRepo.scrambleDeadSharding(instanceId,1);
+                    List<RetryShardingDO> retryShardingDOS = retryShardingRepo.selectByInstanceId(instanceId);
+                    if(CollectionUtils.isEmpty(retryShardingDOS)){
+                        initHeart();
+                        return;
+                    }
+                    List<Long> shardingIds = Lists.newArrayList();
+                    retryShardingDOS.forEach(retryShardingDO -> {
+                        shardingIds.add(retryShardingDO.getId());
+                    });
+                    ShardingContextHolder.initShardingIndex(shardingIds);
+                    if(LOGGER.isDebugEnabled()){
+                        LOGGER.debug("[MybatisHeart#scrambleDeadSharding] scrambleDeadSharding success, instanceId:{}, shardingCount:{}", instanceId, shardingCount);
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("[MybatisHeart#scrambleDeadSharding] scrambleDeadSharding error，instanceId:{}", instanceId, e);
+                }
+            }
+        }
+    }
     @Override
     public void heartBeat() {
-        heartbeatExecutorService = new ScheduledThreadPoolExecutor(1)   ;
-        String instanceId = IpUtils.getIp();
-
-        // 每隔5秒执行一次心跳
-        heartbeatExecutorService.scheduleAtFixedRate(() -> {
-            try {
-               int heartBeatCount = retryShardingRepo.updateLastHeartbeat(instanceId, 1);
-               if(LOGGER.isDebugEnabled()){
-                   LOGGER.debug("[MybatisHeart#heartBeat] heart beat success, instanceId:{}, heartBeatCount:{}", instanceId, heartBeatCount);
-               }
-            } catch (Exception e) {
-                LOGGER.error("[MybatisHeart#heartBeat] heart beat error，instanceId:{}", instanceId, e);
-            }
-        }, 0, 5, java.util.concurrent.TimeUnit.SECONDS);
-
-
+        Thread heartbeatThread = new Thread(new HeartbeatTask());
+        heartbeatThread.setDaemon(true);
+        heartbeatThread.start();
 
     }
 
@@ -100,32 +135,8 @@ public class MybatisHeart implements RetryTaskHeart {
      */
     @Override
     public void scrambleDeadSharding() {
-        scheduledExecutorService = new ScheduledThreadPoolExecutor(1)   ;
-        String instanceId = IpUtils.getIp();
-
-
-        scheduledExecutorService.scheduleAtFixedRate(() -> {
-            try {
-                int shardingCount = retryShardingRepo.scrambleDeadSharding(instanceId,1);
-                List<RetryShardingDO> retryShardingDOS = retryShardingRepo.selectByInstanceId(instanceId);
-                if(CollectionUtils.isEmpty(retryShardingDOS)){
-                    initHeart();
-                    return;
-                }
-                List<Long> shardingIds = Lists.newArrayList();
-                retryShardingDOS.forEach(retryShardingDO -> {
-                    shardingIds.add(retryShardingDO.getId());
-                });
-                ShardingContextHolder.initShardingIndex(shardingIds);
-                if(LOGGER.isDebugEnabled()){
-                    LOGGER.debug("[MybatisHeart#scrambleDeadSharding] scrambleDeadSharding success, instanceId:{}, shardingCount:{}", instanceId, shardingCount);
-                }
-            } catch (Exception e) {
-                LOGGER.error("[MybatisHeart#scrambleDeadSharding] scrambleDeadSharding error，instanceId:{}", instanceId, e);
-            }
-        }, 1, 5, TimeUnit.SECONDS);
-
-
-
+        Thread scrambleDeadShardingThread = new Thread(new ScrambleDeadShardingTask());
+        scrambleDeadShardingThread.setDaemon(true);
+        scrambleDeadShardingThread.start();
     }
 }

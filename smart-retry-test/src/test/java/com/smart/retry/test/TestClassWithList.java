@@ -31,6 +31,6 @@ public class TestClassWithList extends RetryLinstener<List<TestModel>> {
 
         System.out.println(System.currentTimeMillis()/1000+":"+(count++)+":"+JSONObject.toJSONString(param));
 
-        return ExecuteResultStatus.SUCCESS;
+        return ExecuteResultStatus.FAIL;
     }
 }
