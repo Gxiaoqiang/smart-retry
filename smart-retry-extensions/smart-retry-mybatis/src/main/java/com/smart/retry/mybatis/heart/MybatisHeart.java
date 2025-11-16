@@ -28,12 +28,17 @@ public class MybatisHeart implements RetryTaskHeart {
 
     private RetryShardingRepo retryShardingRepo;
 
+    private  String instanceId ;
 
     private static volatile Boolean flag = true;
 
-    public MybatisHeart(RetryShardingRepo retryShardingRepo) {
+    public MybatisHeart(RetryShardingRepo retryShardingRepo, String instanceId) {
         this.retryShardingRepo = retryShardingRepo;
+
+        this.instanceId = instanceId;
     }
+
+
 
 
     public void destroy() {
@@ -53,7 +58,7 @@ public class MybatisHeart implements RetryTaskHeart {
      */
     @Override
     public void initHeart() {
-        String instanceId = IpUtils.getIp();
+        String instanceId = getInstanceId();
         //1.初始化时先更新当前实例的心跳
         retryShardingRepo.updateLastHeartbeat(instanceId, 1);
 
@@ -76,7 +81,7 @@ public class MybatisHeart implements RetryTaskHeart {
     class HeartbeatTask implements Runnable {
         @Override
         public void run() {
-            String instanceId = IpUtils.getIp();
+            String instanceId = getInstanceId();
 
             while (SmartRtryExit.isExit()){
                 try {
@@ -96,7 +101,7 @@ public class MybatisHeart implements RetryTaskHeart {
     class ScrambleDeadShardingTask implements Runnable {
         @Override
         public void run() {
-            String instanceId = IpUtils.getIp();
+            String instanceId = getInstanceId();
 
             while (SmartRtryExit.isExit()){
                 try {
@@ -121,6 +126,12 @@ public class MybatisHeart implements RetryTaskHeart {
             }
         }
     }
+
+    private  String getInstanceId() {
+        //String instanceId = IpUtils.getIp()+":"+port;
+        return instanceId;
+    }
+
     @Override
     public void heartBeat() {
         Thread heartbeatThread = new Thread(new HeartbeatTask());

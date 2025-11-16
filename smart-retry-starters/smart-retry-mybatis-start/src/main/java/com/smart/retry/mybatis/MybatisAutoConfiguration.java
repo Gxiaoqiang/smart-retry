@@ -5,6 +5,7 @@ import com.smart.retry.common.RetryConfiguration;
 import com.smart.retry.common.RetryContainer;
 import com.smart.retry.common.RetryTaskAccess;
 import com.smart.retry.common.RetryTaskHeart;
+import com.smart.retry.common.utils.IpUtils;
 import com.smart.retry.core.CommonConfiguration;
 import com.smart.retry.core.HeartbeatContainer;
 import com.smart.retry.core.SimpleContainer;
@@ -18,15 +19,13 @@ import com.smart.retry.mybatis.repo.RetryShardingRepo;
 import com.smart.retry.mybatis.repo.RetryTaskRepo;
 import com.smart.retry.mybatis.repo.impl.RetryShardingRepoImpl;
 import com.smart.retry.mybatis.repo.impl.RetryTaskRepoImpl;
-import org.apache.ibatis.mapping.DatabaseIdProvider;
-import org.apache.ibatis.mapping.VendorDatabaseIdProvider;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
@@ -41,11 +40,6 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
-import java.util.Properties;
-
 /**
  * @author gwq
  */
@@ -110,18 +104,6 @@ public class MybatisAutoConfiguration extends CommonConfiguration
     }
 
 
-
-
-    @Bean
-    public DatabaseIdProvider databaseIdProvider() {
-        DatabaseIdProvider provider = new VendorDatabaseIdProvider();
-        Properties properties = new Properties();
-        properties.setProperty("MySQL", "mysql");
-        properties.setProperty("PostgreSQL", "postgresql");
-        provider.setProperties(properties);
-        return provider;
-    }
-
     @Bean
     public RetryShardingRepo retryShardingRepo(RetryShardingDao retryShardingDao) {
         return new RetryShardingRepoImpl(retryShardingDao);
@@ -130,7 +112,9 @@ public class MybatisAutoConfiguration extends CommonConfiguration
 
     @Bean
     public RetryTaskHeart retryTaskHeart(RetryShardingRepo retryShardingRepo) {
-        return new MybatisHeart(retryShardingRepo);
+        String serverPort = environment.getProperty("server.port");
+        String instanceId = IpUtils.getIp()+":"+serverPort;
+        return new MybatisHeart(retryShardingRepo,instanceId);
     }
 
 
@@ -152,6 +136,7 @@ public class MybatisAutoConfiguration extends CommonConfiguration
         return retryContainer;
     }
     @Bean
+    @ConditionalOnClass(HeartbeatContainer.class)
     public RetryContainer retryContainer(SmartExecutorConfigure smartExecutorConfigure, HeartbeatContainer heartbeatContainer,
                                          RetryConfiguration configuration) {
         LOGGER.warn("[MybatisAutoConfiguration#retryContainer] retryContainer init");
