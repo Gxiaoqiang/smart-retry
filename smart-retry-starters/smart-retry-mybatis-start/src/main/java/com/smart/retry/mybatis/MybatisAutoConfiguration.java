@@ -112,8 +112,13 @@ public class MybatisAutoConfiguration extends CommonConfiguration
 
     @Bean
     public RetryTaskHeart retryTaskHeart(RetryShardingRepo retryShardingRepo) {
-        String serverPort = environment.getProperty("server.port");
-        String instanceId = IpUtils.getIp()+":"+serverPort;
+        String serverPort = environment.getProperty("server.port","8080");
+        String ip = IpUtils.getIp();
+        if(ip == null){
+            throw new IllegalArgumentException("ip is null");
+        }
+
+        String instanceId = ip + ":" +serverPort;
         return new MybatisHeart(retryShardingRepo,instanceId);
     }
 
