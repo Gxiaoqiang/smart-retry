@@ -2,8 +2,7 @@ package com.smart.retry.mybatis.heart;
 
 import com.google.common.collect.Lists;
 import com.smart.retry.common.RetryTaskHeart;
-import com.smart.retry.common.SmartRtryExit;
-import com.smart.retry.common.utils.IpUtils;
+import com.smart.retry.common.SmartRetryExit;
 import com.smart.retry.core.ShardingContextHolder;
 import com.smart.retry.mybatis.entity.RetryShardingDO;
 import com.smart.retry.mybatis.repo.RetryShardingRepo;
@@ -83,7 +82,7 @@ public class MybatisHeart implements RetryTaskHeart {
         public void run() {
             String instanceId = getInstanceId();
 
-            while (SmartRtryExit.isExit()){
+            while (SmartRetryExit.isExit()){
                 try {
                     TimeUnit.SECONDS.sleep(3);
                     int heartBeatCount = retryShardingRepo.updateLastHeartbeat(instanceId, 1);
@@ -103,7 +102,7 @@ public class MybatisHeart implements RetryTaskHeart {
         public void run() {
             String instanceId = getInstanceId();
 
-            while (SmartRtryExit.isExit()){
+            while (SmartRetryExit.isExit()){
                 try {
                     TimeUnit.SECONDS.sleep(5);
                     int shardingCount = retryShardingRepo.scrambleDeadSharding(instanceId,1);

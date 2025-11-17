@@ -5,7 +5,7 @@ package com.smart.retry.common;
  * @Version SmartRtryFlag.java, v 0.1 2025年11月14日 21:19 xiaoqiang
  * @Description: TODO
  */
-public class SmartRtryExit {
+public class SmartRetryExit {
 
     private static volatile Boolean taskFlag = false;
 

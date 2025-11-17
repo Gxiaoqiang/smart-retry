@@ -1,6 +1,7 @@
 package com.smart.retry.mybatis.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
 /**
  * @Author xiaoqiang
@@ -11,7 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class SmartConfigure {
 
 
-    private String datasource;
+    private String datasource = "dataSource";
 
 
     public String getDatasource() {

@@ -25,6 +25,7 @@ import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -32,21 +33,18 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
-import org.springframework.stereotype.Component;
-
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import javax.sql.DataSource;
 /**
  * @author gwq
  */
-@Configuration
-@EnableConfigurationProperties(SmartConfigure.class)
+@AutoConfiguration
+@EnableConfigurationProperties(value  ={SmartConfigure.class, SmartExecutorConfigure.class})
 @ConditionalOnProperty(prefix = "spring.smart-retry.mybatis", name = "enabled",  matchIfMissing = true)
-@Component
 public class MybatisAutoConfiguration extends CommonConfiguration
         implements ApplicationContextAware , EnvironmentAware {
 
@@ -67,18 +65,13 @@ public class MybatisAutoConfiguration extends CommonConfiguration
     }
 
     @Bean
-    @Primary
-    public SmartExecutorConfigure smartExecutorConfigure() {
-        return new SmartExecutorConfigure();
-    }
-    @Bean
-    public MapperScannerConfigurer mapperScannerConfigurer() {
+    public MapperScannerConfigurer smartRetryMapperScannerConfigurer() {
         MapperScannerConfigurer scannerConfigurer = new MapperScannerConfigurer();
+        //scannerConfigurer.setSqlSessionFactory(smartRetrySqlSessionFactory);
         scannerConfigurer.setSqlSessionFactoryBeanName("smartRetrySqlSessionFactory"); // 设置 SqlSessionFactoryBean 的名称
         scannerConfigurer.setBasePackage("com.smart.retry.mybatis.dao"); // 设置你的 mapper 接口所在的包
         return scannerConfigurer;
     }
-
     @Bean("smartRetrySqlSessionFactory")
     public SqlSessionFactory smartRetrySqlSessionFactory( SmartConfigure smartConfigure)
             throws Exception {
@@ -102,6 +95,7 @@ public class MybatisAutoConfiguration extends CommonConfiguration
         sqlSessionFactoryBean.setConfigLocation(resource);
         return sqlSessionFactoryBean.getObject();
     }
+
 
 
     @Bean
