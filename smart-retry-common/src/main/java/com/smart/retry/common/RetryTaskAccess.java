@@ -50,4 +50,13 @@ public interface RetryTaskAccess {
      */
     void stopRetryTask(long taskId);
 
+    /**
+     * 删除历史的重试任务
+     * @param clearBeforeDays 多少天之前的任务
+     * @param limitRows 每次限制删除的条数
+     * @return
+     */
+
+    int  deleteHistoryRetryTask(int clearBeforeDays, int limitRows);
+
 }

@@ -216,5 +216,18 @@
             from retry_task
             where id = #{id}
     </delete>
-
+    <delete id="deleteByGmtCreate" >
+        DELETE FROM retry_task
+        WHERE id IN (
+            SELECT id
+            FROM retry_task
+            WHERE gmt_create &lt; #{gmtCreate}
+            and sharding_key in
+            (<foreach collection="shardingKeyList" index="index" separator="," item="shardingKeyTmp">
+            #{shardingKeyTmp}
+             </foreach>)
+            ORDER BY id
+            LIMIT #{limitRows}
+        )
+    </delete>
 </mapper>

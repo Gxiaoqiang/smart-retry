@@ -217,4 +217,20 @@
             where id = #{id}
     </delete>
 
+    <delete id="deleteByGmtCreate" >
+        DELETE rt
+        FROM retry_task rt
+        JOIN (
+            SELECT id
+            FROM retry_task
+            WHERE gmt_create &lt; #{gmtCreate}
+            and sharding_key in
+            (<foreach collection="shardingKeyList" index="index" separator="," item="shardingKeyTmp">
+            #{shardingKeyTmp}
+        </foreach>)
+            ORDER BY id
+            LIMIT  #{limitRows}
+        ) AS subquery ON rt.id = subquery.id
+    </delete>
+
 </mapper>

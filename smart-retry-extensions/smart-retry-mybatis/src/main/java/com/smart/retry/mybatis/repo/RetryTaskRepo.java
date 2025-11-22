@@ -29,4 +29,7 @@ public interface RetryTaskRepo {
 
     int deleteRetryTask(long taskId);
 
+
+
+    int deleteByGmtCreate(Date gmtCreate, int limitRows);
 }

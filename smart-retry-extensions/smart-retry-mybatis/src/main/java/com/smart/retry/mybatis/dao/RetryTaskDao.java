@@ -2,7 +2,9 @@ package com.smart.retry.mybatis.dao;
 
 import com.smart.retry.mybatis.entity.RetryTaskDO;
 import com.smart.retry.mybatis.entity.query.RetryTaskQuery;
+import org.apache.ibatis.annotations.Param;
 
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -28,5 +30,9 @@ public interface RetryTaskDao {
 
 
     int deleteById(Long id);
+
+    int deleteByGmtCreate(@Param("gmtCreate") Date  gmtCreate,
+                          @Param("limitRows") int limitRows,
+    @Param("shardingKeyList")List<Long> shardingKeyList);
 
 }

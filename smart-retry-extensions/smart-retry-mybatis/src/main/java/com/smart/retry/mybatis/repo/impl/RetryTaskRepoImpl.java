@@ -83,6 +83,7 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
         long currentTime = System.currentTimeMillis();
         //Date deadTaskTime = new Date(currentTime - maxExecuteTime * 1000);
         query.setDeadTaskTime(deadTaskTime);
+        query.setShardingKeyList(shardingKeyList);
         query.setStatusList(Lists.newArrayList(RetryTaskStatus.RUNNING.getCode()));
         query.setOffset(0);
         query.setLimit(1000);
@@ -113,5 +114,20 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
         query.setOffset(0);
         query.setLimit(1000);
         return retryTaskDao.selectByQuery(query);
+    }
+
+    @Override
+    public int deleteByGmtCreate(Date gmtCreate, int limitRows) {
+        int deleteCount = 0;
+        while (true){
+            int deleteRows = retryTaskDao.deleteByGmtCreate(gmtCreate,
+                    limitRows,
+                    ShardingContextHolder.shardingIndex());
+            deleteCount += deleteRows;
+            if (deleteRows < limitRows){
+                break;
+            }
+        }
+        return deleteCount;
     }
 }

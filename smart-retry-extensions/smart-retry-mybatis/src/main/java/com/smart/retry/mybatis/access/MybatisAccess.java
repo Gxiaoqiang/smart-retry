@@ -90,4 +90,12 @@ public class MybatisAccess implements RetryTaskAccess {
     public void stopRetryTask(long taskId) {
 
     }
+
+    @Override
+    public int deleteHistoryRetryTask(int clearBeforeDays, int limitRows) {
+        Date clearBeforeDate = new Date(System.currentTimeMillis() - clearBeforeDays * 24 * 60 * 60 * 1000);
+
+        return retryTaskRepo.deleteByGmtCreate(clearBeforeDate, limitRows);
+
+    }
 }
