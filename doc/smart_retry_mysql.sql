@@ -30,4 +30,5 @@ CREATE TABLE `retry_task` (
   `next_plan_time_strategy` int DEFAULT NULL,
   KEY `idx_next_plan_time` (`next_plan_time`),
   KEY `idx_status_next_plan_time_retry_num` (`status`,`next_plan_time`,`retry_num`)
+  KEY `idx_gmt_create_sharding_key` (`gmt_create`,`sharding_key`),
 ) ENGINE=InnoDB AUTO_INCREMENT=1094 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='重试任务表';

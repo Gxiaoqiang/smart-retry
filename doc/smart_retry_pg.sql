@@ -73,4 +73,4 @@ COMMENT ON COLUMN retry_task.next_plan_time_strategy IS '下次计划时间策�
 CREATE INDEX idx_next_plan_time ON retry_task (next_plan_time);
 CREATE INDEX idx_status_next_plan_time_retry_num
     ON retry_task (status, next_plan_time, retry_num);
-CREATE INDEX IF NOT EXISTS idx_retry_task_gmt_create ON retry_task(gmt_create);
+CREATE INDEX IF NOT EXISTS idx_retry_task_gmt_create_sharding_key ON retry_task(gmt_create, sharding_key);
