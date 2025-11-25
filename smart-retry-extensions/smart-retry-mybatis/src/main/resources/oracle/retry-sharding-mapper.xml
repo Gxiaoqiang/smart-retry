@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.retry.mybatis.dao.RetryShardingDao">
+
+    <resultMap id="RetryShardingMAP" type="com.smart.retry.mybatis.entity.RetryShardingDO">
+        <!-- 注意：原XML中 property="intanceId" 应该是拼写错误，应为 instanceId -->
+        <result column="id" property="id"/>
+        <result column="gmt_create" property="gmtCreate"/>
+        <result column="instance_id" property="instanceId"/> <!-- 修正拼写 -->
+        <result column="status" property="status"/>
+        <result column="last_heartbeat" property="lastHeartbeat"/>
+    </resultMap>
+
+    <sql id="all_column">
+        id,
+        gmt_create,
+        instance_id,
+        status,
+        last_heartbeat
+    </sql>
+
+    <!-- 方法一：显式使用序列 (推荐用于 Oracle) -->
+    <insert id="insert" useGeneratedKeys="false">
+        <!-- Oracle 不适用 useGeneratedKeys 获取触发器生成的值，通常需要显式调用序列 -->
+        <selectKey keyProperty="id" resultType="long" order="BEFORE">
+            SELECT seq_retry_sharding_id.NEXTVAL FROM dual
+        </selectKey>
+        INSERT INTO retry_sharding (
+        id, <!-- 显式插入ID -->
+        gmt_create,
+        instance_id,
+        status,
+        last_heartbeat)
+        VALUES (
+        #{id}, <!-- 使用 selectKey 获取的 ID -->
+        SYSDATE, <!-- Oracle 使用 SYSDATE -->
+        #{instanceId}, <!-- 修正后的属性名 -->
+        #{status},
+        #{lastHeartbeat})
+    </insert>
+
+    <!-- 方法二：如果坚持使用触发器自动生成ID且MyBatis配置支持 -->
+    <!--
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO retry_sharding (
+            gmt_create,
+            instance_id,
+            status,
+            last_heartbeat)
+        VALUES (
+                SYSDATE,
+                #{instanceId},
+                #{status},
+                #{lastHeartbeat})
+    </insert>
+    -->
+
+    <select id="selectByInstanceId"
+            parameterType="java.lang.String"
+            resultMap="RetryShardingMAP"> <!-- 使用正确的 resultMap ID -->
+        SELECT <include refid="all_column"/>
+        FROM retry_sharding
+        WHERE instance_id = #{instanceId}
+    </select>
+
+    <!-- 重写 scrambleDeadSharding 以适应 Oracle 语法 -->
+    <update id="scrambleDeadSharding" >
+        <!-- 使用子查询方式更新，兼容 Oracle -->
+        UPDATE retry_sharding rs
+        SET
+        rs.status = #{status},
+        rs.instance_id = #{instanceId},
+        rs.last_heartbeat = SYSDATE
+        WHERE rs.id IN (
+        SELECT tmp.id
+        FROM (
+        SELECT id
+        FROM retry_sharding
+        WHERE last_heartbeat &lt; (SYSDATE - INTERVAL '180' SECOND) -- Oracle 时间间隔语法
+        ) tmp
+        )
+    </update>
+
+    <update id="updateLastHeartbeat">
+        UPDATE retry_sharding
+        SET
+        last_heartbeat = SYSDATE, <!-- Oracle 使用 SYSDATE -->
+        status = #{status}
+        WHERE
+        instance_id = #{instanceId}
+    </update>
+
+</mapper>

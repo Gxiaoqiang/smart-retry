@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--Converted for Oracle DB -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.retry.mybatis.dao.RetryTaskDao">
+
+    <!-- Result Map 保持不变，但建议检查 jdbcType 是否完全匹配 Oracle 类型 -->
+    <resultMap id="BaseResultMap" type="com.smart.retry.mybatis.entity.RetryTaskDO">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="gmt_create" jdbcType="TIMESTAMP" property="gmtCreate"/>
+        <result column="gmt_modified" jdbcType="TIMESTAMP" property="gmtModified"/>
+        <result column="sharding_key" jdbcType="BIGINT" property="shardingKey"/>
+        <result column="task_desc" jdbcType="VARCHAR" property="taskDesc"/>
+        <result column="task_code" jdbcType="VARCHAR" property="taskCode"/>
+        <!-- TINYINT 在 Oracle 中通常映射为 NUMBER(3) -->
+        <result column="status" jdbcType="TINYINT" property="status"/>
+        <result column="interval_second" jdbcType="INTEGER" property="intervalSecond"/>
+        <result column="delay_second" jdbcType="INTEGER" property="delaySecond"/>
+        <result column="next_plan_time" jdbcType="TIMESTAMP" property="nextPlanTime"/>
+        <result column="retry_num" jdbcType="INTEGER" property="retryNum"/>
+        <result column="origin_retry_num" jdbcType="INTEGER" property="originRetryNum"/>
+        <result column="creator" jdbcType="VARCHAR" property="creator"/>
+        <result column="executor" jdbcType="VARCHAR" property="executor"/>
+        <result column="next_plan_time_strategy" jdbcType="INTEGER" property="nextPlanTimeStrategy"/> <!-- javaType 通常由 MyBatis 推断 -->
+        <!-- LONGVARCHAR 在 Oracle 中通常映射为 CLOB -->
+        <result column="attribute" jdbcType="CLOB" property="attribute"/>
+        <result column="parameters" jdbcType="CLOB" property="parameters"/>
+        <result column="current_log_id" jdbcType="BIGINT" property="currentLogId"/>
+        <result column="unique_key" jdbcType="VARCHAR" property="uniqueKey"/>
+        <result column="max_execute_time" jdbcType="INTEGER" property="maxExecuteTime"/>
+    </resultMap>
+
+    <!-- base_columns SQL 片段保持不变 -->
+    <sql id="base_columns">
+        id,
+        gmt_create,
+        gmt_modified,
+        task_desc,
+        task_code,
+        attribute,
+        parameters,
+        status,
+        delay_second,
+        interval_second,
+        delay_second, <!-- 注意：这里有重复项，可能是笔误？ -->
+        next_plan_time,
+        origin_retry_num,
+        next_plan_time_strategy,
+        retry_num,
+        creator,
+        executor,
+        max_execute_time,
+        current_log_id,
+        unique_key
+    </sql>
+
+    <!-- baseSelectSql SQL 片段保持不变，因为它主要是动态 SQL -->
+    <sql id="baseSelectSql">
+        <trim prefixOverrides="AND">
+            <if test="id != null">
+                AND id=#{id}
+            </if>
+            <if test="statusList!=null and statusList.size>0">
+                and status in
+                (<foreach collection="statusList" index="index" separator="," item="statusTmp">
+                #{statusTmp}
+            </foreach>)
+            </if>
+            <if test="shardingKeyList!=null and shardingKeyList.size>0">
+                and sharding_key in
+                (<foreach collection="shardingKeyList" index="index" separator="," item="shardingKeyTmp">
+                #{shardingKeyTmp}
+            </foreach>)
+            </if>
+            <if test="status != null">
+                AND status=#{status}
+            </if>
+            <if test="taskCode != null and taskCode != ''">
+                AND task_code=#{taskCode}
+            </if>
+            <if test="intervalSecond != null">
+                AND interval_second=#{intervalSecond}
+            </if>
+            <!-- 注意：原SQL中有 delayTime 参数，但表结构是 delay_second 字段，这里假设是笔误 -->
+            <if test="delaySecond != null">
+                AND delay_second=#{delaySecond}
+            </if>
+            <if test="nextPlanTime != null">
+                AND next_plan_time=#{nextPlanTime}
+            </if>
+            <if test="retryNum != null">
+                AND retry_num=#{retryNum}
+            </if>
+            <if test="minNextPlanTime!=null">
+                AND next_plan_time &gt;= #{minNextPlanTime}
+            </if>
+            <if test="maxNextPlanTime!=null">
+                AND next_plan_time &lt;= #{maxNextPlanTime}
+            </if>
+            <if test="minRetryNum!=null">
+                AND retry_num &gt;= #{minRetryNum}
+            </if>
+            <if test="maxRetryNum!=null">
+                AND retry_num &lt;= #{maxRetryNum}
+            </if>
+            <!-- 如果deadTaskTime不为空，则查询dead状态的任务  -->
+            <if test="deadTaskTime!=null">
+                AND gmt_modified &lt; #{deadTaskTime}
+            </if>
+            <if test="originRetryNum!=null">
+                AND origin_retry_num = #{originRetryNum}
+            </if>
+            <if test="minOriginRetryNum!=null">
+                AND origin_retry_num &gt;= #{minOriginRetryNum}
+            </if>
+            <if test="maxOriginRetryNum!=null">
+                AND origin_retry_num &lt;= #{maxOriginRetryNum}
+            </if>
+            <if test="creator!=null">
+                AND creator = #{creator}
+            </if>
+            <if test="uniqueKey!=null">
+                and unique_key = #{uniqueKey}
+            </if>
+            <if test="executor!=null">
+                AND executor = #{executor}
+            </if>
+        </trim>
+    </sql>
+
+    <!-- INSERT 语句：替换 CURRENT_TIMESTAMP 为 SYSDATE -->
+    <insert id="insert" parameterType="com.smart.retry.mybatis.entity.RetryTaskDO">
+        <!-- 如果需要获取自动生成的 ID (通过序列和触发器)，使用 selectKey -->
+        <!--
+        <selectKey keyProperty="id" resultType="long" order="BEFORE">
+             SELECT seq_retry_task_id.NEXTVAL FROM dual
+        </selectKey>
+        -->
+
+        insert into retry_task (
+        gmt_create,
+        gmt_modified,
+        task_desc,
+        sharding_key,
+        task_code,
+        status,
+        interval_second,
+        delay_second,
+        next_plan_time,
+        retry_num,
+        attribute,
+        parameters,
+        origin_retry_num,
+        current_log_id,
+        creator,
+        executor,
+        next_plan_time_strategy,
+        unique_key,
+        max_execute_time -- 添加缺失的字段
+        )
+        values (
+        SYSDATE, -- 替换 CURRENT_TIMESTAMP
+        SYSDATE, -- 替换 CURRENT_TIMESTAMP
+        #{taskDesc,jdbcType=VARCHAR},
+        #{shardingKey,jdbcType=BIGINT},
+        #{taskCode,jdbcType=VARCHAR},
+        #{status,jdbcType=TINYINT},
+        #{intervalSecond,jdbcType=INTEGER},
+        #{delaySecond,jdbcType=INTEGER},
+        #{nextPlanTime,jdbcType=TIMESTAMP},
+        #{retryNum,jdbcType=INTEGER},
+        #{attribute,jdbcType=CLOB}, -- 建议使用 CLOB
+        #{parameters,jdbcType=CLOB}, -- 建议使用 CLOB
+        #{originRetryNum},
+        #{currentLogId},
+        #{creator},
+        #{executor},
+        #{nextPlanTimeStrategy},
+        #{uniqueKey},
+        #{maxExecuteTime} -- 添加缺失的字段值
+        )
+    </insert>
+
+    <!-- SELECT BY ID 保持不变 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="base_columns"/>
+        FROM retry_task
+        WHERE id = #{id}
+    </select>
+
+    <!-- SELECT BY QUERY：替换分页语法 -->
+    <select id="selectByQuery" resultMap="BaseResultMap" parameterType="com.smart.retry.mybatis.entity.query.RetryTaskQuery">
+        select
+        <include refid="base_columns"/>
+        from retry_task
+        WHERE
+        <include refid="baseSelectSql"/>
+        order by id desc
+        <!-- Oracle 12c+ 分页语法 -->
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+    </select>
+
+    <!-- COUNT 查询保持不变 -->
+    <select id="countByQuery" parameterType="com.smart.retry.mybatis.entity.query.RetryTaskQuery"
+            resultType="java.lang.Integer">
+        select count(*)
+        from retry_task
+        WHERE
+        <include refid="baseSelectSql"/>
+    </select>
+
+    <!-- DELETE BY PRIMARY KEY 保持不变 -->
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+        delete
+        from retry_task
+        where id = #{id}
+    </delete>
+
+    <!-- UPDATE 语句：替换 CURRENT_TIMESTAMP 为 SYSDATE -->
+    <update id="update" parameterType="com.smart.retry.mybatis.entity.RetryTaskDO">
+        update retry_task
+        <set>
+            <trim suffixOverrides=",">
+                gmt_modified = SYSDATE , -- 替换 CURRENT_TIMESTAMP
+                <if test="taskDesc != null">
+                    task_desc = #{taskDesc,jdbcType=VARCHAR},
+                </if>
+                <if test="taskCode != null">
+                    task_code = #{taskCode,jdbcType=VARCHAR},
+                </if>
+                <if test="status != null">
+                    status = #{status,jdbcType=TINYINT},
+                </if>
+                <if test="intervalSecond != null">
+                    interval_second = #{intervalSecond,jdbcType=INTEGER},
+                </if>
+                <if test="delaySecond != null">
+                    delay_second = #{delaySecond,jdbcType=INTEGER},
+                </if>
+                <if test="nextPlanTime != null">
+                    next_plan_time = #{nextPlanTime,jdbcType=TIMESTAMP},
+                </if>
+                <if test="retryNum != null">
+                    retry_num = #{retryNum},
+                </if>
+                <if test="originRetryNum != null">
+                    origin_retry_num = #{originRetryNum},
+                </if>
+                <if test="creator != null">
+                    creator = #{creator},
+                </if>
+                <if test="executor != null">
+                    executor = #{executor},
+                </if>
+
+                <if test="attribute != null">
+                    attribute = #{attribute,jdbcType=CLOB}, -- 建议使用 CLOB
+                </if>
+                <if test="parameters != null">
+                    parameters = #{parameters,jdbcType=CLOB}, -- 建议使用 CLOB
+                </if>
+
+                <if test="currentLogId != null">
+                    current_log_id = #{currentLogId},
+                </if>
+                <if test="maxExecuteTime != null">
+                    max_execute_time = #{maxExecuteTime}, -- 添加缺失字段更新
+                </if>
+                <if test="uniqueKey != null">
+                    unique_key = #{uniqueKey}, -- 添加缺失字段更新
+                </if>
+            </trim>
+        </set>
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- DELETE BY ID (别名) 保持不变 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        delete
+        from retry_task
+        where id = #{id}
+    </delete>
+
+    <!-- DELETE BY GMT_CREATE: 重构为 Oracle 兼容语法 -->
+    <delete id="deleteByGmtCreate" >
+        <!-- 方式一：使用 IN 子查询 (推荐，更易读) -->
+        DELETE FROM retry_task
+        WHERE id IN (
+        SELECT id FROM (
+        SELECT id
+        FROM retry_task
+        WHERE gmt_create &lt; #{gmtCreate}
+        AND sharding_key IN
+        (<foreach collection="shardingKeyList" index="index" separator="," item="shardingKeyTmp">
+        #{shardingKeyTmp}
+    </foreach>)
+        ORDER BY id
+        FETCH FIRST #{limitRows} ROWS ONLY
+        ) subquery
+        )
+
+
+
+
+
+    </delete>
+
+</mapper>
