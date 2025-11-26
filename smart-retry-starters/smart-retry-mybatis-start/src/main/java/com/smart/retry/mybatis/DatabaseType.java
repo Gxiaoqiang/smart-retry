@@ -13,7 +13,7 @@ import java.sql.SQLException;
 public enum DatabaseType {
     MYSQL("mysql", "MySQL", "classpath:smart-mybatis-config-mysql.xml"),
     POSTGRESQL("postgresql", "PostgreSQL", "classpath:smart-mybatis-config-postgresql.xml"),
-    ORACLE("oracle", "Oracle","classpath:smart-mybatis-config-oracle.xml"),
+    ORACLE("oracle", "Oracle",null),
     SQLSERVER("sqlserver", "Microsoft SQL Server",null),
     H2("h2", "H2",null),
     SQLITE("sqlite", "SQLite",null),
