@@ -156,7 +156,13 @@ public class DefaultInnovation implements SmartInnovation {
         throw new RetryException("retryTaskTypeEnum is not support");
     }
 
-    private static Type getRealType(RetryTaskObject taskObject) {
+
+    /**
+     * 获取真实的参数类型
+     * @param taskObject
+     * @return
+     */
+    private  Type getRealType(RetryTaskObject taskObject) {
         Type superClass = taskObject.getTargetObj().getClass().getGenericSuperclass();
         ParameterizedType parameterizedType = (ParameterizedType) superClass;
         Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
