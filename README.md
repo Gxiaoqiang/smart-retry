@@ -353,13 +353,8 @@ public class EmailAlertNotify implements RetryTaskNotify {
 1. **`intervalSecond` 与策略强相关**  
    若使用 `BACKOFF`、`FIBONACCI` 等动态策略，但未设置 `intervalSecond`，框架将无法计算下次执行时间，可能导致任务卡住。
 
-2. **`param` 的序列化要求**  
-   确保你的参数类：
-    - 有无参构造函数
-    - 字段可被 JSON 序列化（避免 transient、内部类）
-    - 推荐使用标准 DTO，而非 Entity 或含循环引用的对象
 
-3. **`delaySecond` ≠ `intervalSecond`**
+2. **`delaySecond` ≠ `intervalSecond`**
     - `delaySecond` 只影响**第一次执行**
     - `intervalSecond` 影响**后续重试间隔**
 
