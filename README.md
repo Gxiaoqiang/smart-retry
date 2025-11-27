@@ -278,7 +278,7 @@ public class EmailAlertNotify implements RetryTaskNotify {
 
     @Override
     public void allRetryTaskFinishNotify(NotifyContext context) {
-        if (context.isFinalSuccess()) {
+        if (context.getExecuteResultStatus().equals(ExecuteResultStatus.SUCCESS)) {
             log.info("任务最终成功");
         } else {
             // 发送告警邮件/钉钉/企业微信
