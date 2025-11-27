@@ -70,11 +70,12 @@ ALTER TABLE retry_task ADD CONSTRAINT pk_retry_task PRIMARY KEY (id);
 CREATE INDEX idx_next_plan_time ON retry_task (next_plan_time);
 
 -- idx_status_next_plan_time_retry_num
-CREATE INDEX idx_status_npt_rn ON retry_task (status, next_plan_time, retry_num); -- 缩短索引名
+CREATE INDEX idx_status_npt_rn ON retry_task (status, sharding_key,next_plan_time, retry_num); -- 缩短索引名
 
 -- idx_gmt_create_sharding_key
 CREATE INDEX idx_gmt_create_sk ON retry_task (gmt_create, sharding_key); -- 缩短索引名
 
+CREATE INDEX idx_unique_key ON retry_task (unique_key);
 -- 添加列注释
 COMMENT ON COLUMN retry_task.id IS 'ID';
 COMMENT ON COLUMN retry_task.gmt_create IS '创建时间';

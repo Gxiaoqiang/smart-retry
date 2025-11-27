@@ -292,12 +292,12 @@ public class EmailAlertNotify implements RetryTaskNotify {
 
 ## 🧪 高级配置说明
 
-| 配置项 | 默认值 | 说明 |
-|-------|--------|------|
-| `smart-retry.task-find-interval` | `20` | 任务扫描间隔（秒） |
-| `smart-retry.dead-task.dead-task-check` | `false` | 是否开启死信检测 |
-| `smart-retry.clear-task.enabled` | `false` | 是否开启历史清理 |
-| `smart-retry.executor.*` | 见下表 | 线程池参数 |
+| 配置项 | 默认值 | 说明                  |
+|-------|--------|---------------------|
+| `smart-retry.task-find-interval` | `20` | 任务扫描间隔（秒），最小可以设置为1秒 |
+| `smart-retry.dead-task.dead-task-check` | `false` | 是否开启死信检测            |
+| `smart-retry.clear-task.enabled` | `false` | 是否开启历史清理            |
+| `smart-retry.executor.*` | 见下表 | 线程池参数               |
 
 **线程池默认值**：
 - `corePoolSize`: CPU 核数 + 1
