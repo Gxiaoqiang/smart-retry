@@ -28,8 +28,6 @@ public class SimpleContainer implements RetryContainer {
     private static final Logger LOGGER = org.slf4j.LoggerFactory.getLogger(SimpleContainer.class);
 
 
-    //private static volatile Boolean exitFlag = false;
-
     private static final Integer MAX_QUEUE_SIZE = 3000;
 
     private RetryConfiguration retryConfiguration;
