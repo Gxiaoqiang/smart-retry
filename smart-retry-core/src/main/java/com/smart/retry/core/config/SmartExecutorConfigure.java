@@ -158,14 +158,24 @@ public class SmartExecutorConfigure {
         }
 
         public void setCorePoolSize(int corePoolSize) {
+            if (corePoolSize < 1) {
+                throw new IllegalArgumentException("corePoolSize must be greater than 0");
+            }
+            if (maxPoolSize < corePoolSize) {
+                throw new IllegalArgumentException("maxPoolSize must be greater than corePoolSize");
+            }
             this.corePoolSize = corePoolSize;
         }
 
         public int getMaxPoolSize() {
+
             return maxPoolSize;
         }
 
         public void setMaxPoolSize(int maxPoolSize) {
+            if (maxPoolSize < corePoolSize) {
+                throw new IllegalArgumentException("maxPoolSize must be greater than corePoolSize");
+            }
             this.maxPoolSize = maxPoolSize;
         }
 
@@ -174,6 +184,9 @@ public class SmartExecutorConfigure {
         }
 
         public void setQueueCapacity(int queueCapacity) {
+            if (queueCapacity < 1) {
+                throw new IllegalArgumentException("queueCapacity must be greater than 0");
+            }
             this.queueCapacity = queueCapacity;
         }
 

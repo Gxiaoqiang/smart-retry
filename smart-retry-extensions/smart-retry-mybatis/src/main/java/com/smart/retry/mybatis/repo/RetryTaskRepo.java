@@ -13,7 +13,7 @@ import java.util.List;
  */
 public interface RetryTaskRepo {
 
-    void saveRetryTask(RetryTaskDO retryTask);
+    long saveRetryTask(RetryTaskDO retryTask);
 
 
 

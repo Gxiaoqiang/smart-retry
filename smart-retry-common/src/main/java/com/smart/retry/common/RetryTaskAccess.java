@@ -23,12 +23,15 @@ public interface RetryTaskAccess {
      */
     List<RetryTask> listRetryTask();
 
+
+    RetryTask getRetryTask(long taskId);
+
     /**
      * 保存重试任务
      * @param retryTask
      * @return
      */
-    void saveRetryTask(RetryTask retryTask);
+    long saveRetryTask(RetryTask retryTask);
 
     /**
      * 更新重试任务

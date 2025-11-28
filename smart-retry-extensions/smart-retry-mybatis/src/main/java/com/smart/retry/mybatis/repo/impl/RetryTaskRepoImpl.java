@@ -31,7 +31,7 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
     }
 
     @Override
-    public void saveRetryTask(RetryTaskDO retryTask) {
+    public long saveRetryTask(RetryTaskDO retryTask) {
         String uniqueKey = retryTask.getUniqueKey();
         RetryTaskQuery retryTaskQuery = new RetryTaskQuery();
         retryTaskQuery.setUniqueKey(uniqueKey);
@@ -42,14 +42,14 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
         List<RetryTaskDO> retryTaskList = retryTaskDao.selectByQuery(retryTaskQuery);
         if (retryTaskList.size() > 0) {
             logger.warn("[RetryTaskRepoImpl-saveRetryTask]uniqueKey:{} already exists, skip insert", uniqueKey);
-            return;
+            return -1;
         }
         long nextTime = System.currentTimeMillis() + retryTask.getDelaySecond() * 1000;
         retryTask.setNextPlanTime(new Date(nextTime));
         retryTask.setOriginRetryNum(retryTask.getRetryNum());
         retryTask.setCreator(IpUtils.getIp());
         retryTaskDao.insert(retryTask);
-
+        return retryTask.getId();
     }
 
     @Override
@@ -94,7 +94,7 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
 
     @Override
     public int deleteRetryTask(long taskId) {
-        return retryTaskDao.deleteById(taskId );
+        return retryTaskDao.deleteById(taskId);
     }
 
     @Override
@@ -111,19 +111,19 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
         query.setMaxNextPlanTime(new Date());
         //默认查询1000条数据
         query.setOffset(0);
-        query.setLimit(1000);
+        query.setLimit(500);
         return retryTaskDao.selectByQuery(query);
     }
 
     @Override
     public int deleteByGmtCreate(Date gmtCreate, int limitRows) {
         int deleteCount = 0;
-        while (true){
+        while (true) {
             int deleteRows = retryTaskDao.deleteByGmtCreate(gmtCreate,
                     limitRows,
                     ShardingContextHolder.shardingIndex());
             deleteCount += deleteRows;
-            if (deleteRows < limitRows){
+            if (deleteRows < limitRows) {
                 break;
             }
         }

@@ -77,7 +77,7 @@
         FROM (
         SELECT id
         FROM retry_sharding
-        WHERE last_heartbeat &lt; (SYSDATE - INTERVAL '180' SECOND) -- Oracle 时间间隔语法
+        WHERE last_heartbeat &lt; (SYSDATE - INTERVAL '180' SECOND)  limit 1
         ) tmp
         )
     </update>

@@ -1,14 +1,12 @@
 package com.smart.retry.mybatis;
 
 
-import com.smart.retry.common.RetryConfiguration;
-import com.smart.retry.common.RetryContainer;
-import com.smart.retry.common.RetryTaskAccess;
-import com.smart.retry.common.RetryTaskHeart;
+import com.smart.retry.common.*;
 import com.smart.retry.common.utils.IpUtils;
 import com.smart.retry.core.CommonConfiguration;
 import com.smart.retry.core.HeartbeatContainer;
 import com.smart.retry.core.SimpleContainer;
+import com.smart.retry.core.SimpleRetryTaskOperator;
 import com.smart.retry.core.config.SmartExecutorConfigure;
 import com.smart.retry.mybatis.access.MybatisAccess;
 import com.smart.retry.mybatis.config.SmartConfigure;
@@ -25,7 +23,9 @@ import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -34,6 +34,7 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Role;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -43,7 +44,7 @@ import javax.sql.DataSource;
  * @author gwq
  */
 @AutoConfiguration
-@EnableConfigurationProperties(value  ={SmartConfigure.class, SmartExecutorConfigure.class})
+@EnableConfigurationProperties(value  ={SmartConfigure.class})
 @ConditionalOnProperty(prefix = "spring.smart-retry.mybatis", name = "enabled",  matchIfMissing = true)
 public class MybatisAutoConfiguration extends CommonConfiguration
         implements ApplicationContextAware , EnvironmentAware {
@@ -143,5 +144,6 @@ public class MybatisAutoConfiguration extends CommonConfiguration
         retryContainer.start();
         return retryContainer;
     }
+
 
 }

@@ -30,9 +30,9 @@ public class SimpleContainer implements RetryContainer {
 
     private static final Integer MAX_QUEUE_SIZE = 3000;
 
-    private RetryConfiguration retryConfiguration;
+    private static RetryConfiguration retryConfiguration;
 
-    private SmartExecutorConfigure smartConfigure;
+    private static SmartExecutorConfigure smartConfigure;
 
     private static ThreadPoolExecutor consumerExecutor;
 
@@ -60,23 +60,7 @@ public class SimpleContainer implements RetryContainer {
 
     @Override
     public void start() {
-        int corePoolSize = smartConfigure.getExecutor().getCorePoolSize();
-        int maxPoolSize = smartConfigure.getExecutor().getMaxPoolSize();
-        int queueSize = smartConfigure.getExecutor().getQueueCapacity();
-        String name = smartConfigure.getExecutor().getName();
-        consumerQueue = new ArrayBlockingQueue<>(queueSize);
-
-
-        consumerExecutor = new ThreadPoolExecutor(corePoolSize,
-                maxPoolSize,
-                1L, TimeUnit.SECONDS,
-                consumerQueue,
-                new ThreadFactory() {
-                    @Override
-                    public Thread newThread(Runnable r) {
-                        return new Thread(r, name);
-                    }
-                });
+        initTaskExecutor(smartConfigure);
 
         Thread producerTask = new Thread(new ProducerTask());
         producerTask.start();
@@ -94,8 +78,35 @@ public class SimpleContainer implements RetryContainer {
             taskScheduler.schedule(new ClearTask(), trigger);
 
         }
+    }
 
 
+
+    private synchronized static void initTaskExecutor(SmartExecutorConfigure smartConfigure) {
+
+        if (consumerExecutor != null) {
+            return;
+        }
+
+        int corePoolSize = smartConfigure.getExecutor().getCorePoolSize();
+        int maxPoolSize = smartConfigure.getExecutor().getMaxPoolSize();
+        int queueSize = smartConfigure.getExecutor().getQueueCapacity();
+        String name = smartConfigure.getExecutor().getName();
+        consumerQueue = new ArrayBlockingQueue<>(queueSize);
+
+
+        consumerExecutor = new ThreadPoolExecutor(corePoolSize,
+                maxPoolSize,
+                1L, TimeUnit.SECONDS,
+                consumerQueue,
+                new ThreadFactory() {
+                    @Override
+                    public Thread newThread(Runnable r) {
+                        return new Thread(r, name);
+                    }
+                },
+                //采用拒绝策略为callerRunsPolicy，即当线程池队列满时，直接在调用者线程中运行被拒绝的任务
+                new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
     private void initTaskScheduler() {
@@ -112,11 +123,11 @@ public class SimpleContainer implements RetryContainer {
 
     }
 
-    private String getUniqueKey(RetryTask retryTask) {
+    private static String getUniqueKey(RetryTask retryTask) {
         return retryTask.getTaskCode() + "-" + retryTask.getUniqueKey();
     }
 
-    class ConsumerTask implements Runnable {
+    static class ConsumerTask implements Runnable {
 
         private RetryTask retryTask;
         private RetryConfiguration retryConfiguration;
@@ -151,7 +162,7 @@ public class SimpleContainer implements RetryContainer {
             try {
                 int deleteCount = retryConfiguration.getRetryTaskAcess().deleteHistoryRetryTask(smartConfigure.getClearTask().getBeforeDays(), smartConfigure.getClearTask().getLimitRows());
                 LOGGER.info("[ClearTask#run] delete expired retry task count {},expire days {},limit rows {} ", deleteCount, smartConfigure.getClearTask().getBeforeDays(), smartConfigure.getClearTask().getLimitRows());
-            }catch (Exception e){
+            } catch (Exception e) {
                 LOGGER.error("[ClearTask#run] error ", e);
             }
         }
@@ -260,19 +271,7 @@ public class SimpleContainer implements RetryContainer {
                     } else {
                         sleepTimes = 0L;
                     }
-                    loop2:
-                    for (RetryTask retryTask : allRetryTask) {
-                        String uniqueKey = getUniqueKey(retryTask);
-                        if (RetryTaskCache.isTaskExists(uniqueKey)) {
-                            continue loop2;
-                        }
-                        RetryTaskCache.addTaskFlag(uniqueKey);
-
-                        CompletableFuture<Void> future = CompletableFuture.runAsync(new ConsumerTask(retryTask, retryConfiguration), consumerExecutor);
-
-
-                        //consumerExecutor.execute(new ConsumerTask(retryTask, retryConfiguration));
-                    }
+                    produceTask(allRetryTask);
                     sleep();
 
                 } catch (Exception e) {
@@ -280,5 +279,50 @@ public class SimpleContainer implements RetryContainer {
                 }
             }
         }
+
+        private void produceTask(List<RetryTask> allRetryTask) {
+            for (RetryTask retryTask : allRetryTask) {
+                doProduceTask(retryTask, retryConfiguration);
+
+
+                //consumerExecutor.execute(new ConsumerTask(retryTask, retryConfiguration));
+            }
+        }
     }
+
+    private static void doProduceTask(RetryTask retryTask, RetryConfiguration retryConfiguration) {
+        if (checkTaskExists(retryTask)) return;
+
+        CompletableFuture<Void> future = CompletableFuture.runAsync(new ConsumerTask(retryTask, retryConfiguration), consumerExecutor);
+    }
+
+    private static void initTaskConsumerExecutor(SmartExecutorConfigure smartConfigure) {
+        if (consumerExecutor != null) {
+            return;
+        }
+        initTaskExecutor(smartConfigure);
+    }
+
+    static void invokeTaskAsync(RetryTask retryTask,
+                           RetryConfiguration retryConfiguration,
+    SmartExecutorConfigure smartConfigure) {
+        initTaskConsumerExecutor(smartConfigure);
+        doProduceTask(retryTask, retryConfiguration);
+    }
+
+    static void invokeTaskSync(RetryTask retryTask,
+                           RetryConfiguration retryConfiguration) {
+        if (checkTaskExists(retryTask)) return;
+        new ConsumerTask(retryTask, retryConfiguration).run();
+    }
+
+    private static boolean checkTaskExists(RetryTask retryTask) {
+        String uniqueKey = getUniqueKey(retryTask);
+        if (RetryTaskCache.isTaskExists(uniqueKey)) {
+            return true;
+        }
+        RetryTaskCache.addTaskFlag(uniqueKey);
+        return false;
+    }
+
 }

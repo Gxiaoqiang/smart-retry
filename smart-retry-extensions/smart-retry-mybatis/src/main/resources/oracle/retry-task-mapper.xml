@@ -66,14 +66,14 @@
                 #{statusTmp}
             </foreach>)
             </if>
+            <if test="status != null">
+                AND status=#{status}
+            </if>
             <if test="shardingKeyList!=null and shardingKeyList.size>0">
                 and sharding_key in
                 (<foreach collection="shardingKeyList" index="index" separator="," item="shardingKeyTmp">
                 #{shardingKeyTmp}
             </foreach>)
-            </if>
-            <if test="status != null">
-                AND status=#{status}
             </if>
             <if test="taskCode != null and taskCode != ''">
                 AND task_code=#{taskCode}
@@ -81,9 +81,8 @@
             <if test="intervalSecond != null">
                 AND interval_second=#{intervalSecond}
             </if>
-            <!-- 注意：原SQL中有 delayTime 参数，但表结构是 delay_second 字段，这里假设是笔误 -->
-            <if test="delaySecond != null">
-                AND delay_second=#{delaySecond}
+            <if test="delayTime != null">
+                AND delay_time=#{delayTime}
             </if>
             <if test="nextPlanTime != null">
                 AND next_plan_time=#{nextPlanTime}
@@ -131,12 +130,9 @@
     <!-- INSERT 语句：替换 CURRENT_TIMESTAMP 为 SYSDATE -->
     <insert id="insert" parameterType="com.smart.retry.mybatis.entity.RetryTaskDO">
         <!-- 如果需要获取自动生成的 ID (通过序列和触发器)，使用 selectKey -->
-        <!--
         <selectKey keyProperty="id" resultType="long" order="BEFORE">
-             SELECT seq_retry_task_id.NEXTVAL FROM dual
+            SELECT SEQ_RETRY_TASK_ID.NEXTVAL FROM DUAL
         </selectKey>
-        -->
-
         insert into retry_task (
         gmt_create,
         gmt_modified,

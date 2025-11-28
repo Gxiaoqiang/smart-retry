@@ -2,7 +2,7 @@ package com.smart.retry.test;
 
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Lists;
-import com.smart.retry.common.RetryTaskCreator;
+import com.smart.retry.common.RetryTaskOperator;
 import com.smart.retry.common.constant.NextPlanTimeStrategyEnum;
 import com.smart.retry.common.model.RetryTask;
 import com.smart.retry.common.model.RetryTaskBuilder;
@@ -24,7 +24,7 @@ public class MybatisTest extends AbstractTest {
     private TestRetry testRetry;
 
     @Autowired
-    private RetryTaskCreator retryTaskCreator;
+    private RetryTaskOperator retryTaskOperator;
 
     @Autowired
     private TestChain testChain;
@@ -72,7 +72,7 @@ public class MybatisTest extends AbstractTest {
                 .withDelaySecond(2);
         retryTaskBuilder.withParam(Lists.newArrayList(new TestModel("123", "456",2),
                 new TestModel("789", "456",3)));
-        retryTaskCreator.createTask(retryTaskBuilder);
+        retryTaskOperator.createTask(retryTaskBuilder);
 
         TimeUnit.SECONDS.sleep(1000);
 
@@ -99,7 +99,7 @@ public class MybatisTest extends AbstractTest {
                     .withDelaySecond(2)
                     .withParam(new TestModel("123", "456",2));
             retryTaskBuilder.withParam(new TestModel("123", "456",2));
-            retryTaskCreator.createTask(retryTaskBuilder);
+            retryTaskOperator.createTask(retryTaskBuilder);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -117,7 +117,7 @@ public class MybatisTest extends AbstractTest {
         RetryTaskBuilder retryTaskBuilder = RetryTaskBuilder.of(
                 "TestClassWithParam",null,3,20,"params"
         );
-        retryTaskCreator.createTask(retryTaskBuilder);
+        retryTaskOperator.createTask(retryTaskBuilder);
 
         //retryTaskCreator.createTask(retryTask);
 

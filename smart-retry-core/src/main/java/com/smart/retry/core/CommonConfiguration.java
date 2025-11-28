@@ -2,9 +2,10 @@ package com.smart.retry.core;
 
 import com.smart.retry.common.RetryConfiguration;
 import com.smart.retry.common.RetryTaskAccess;
-import com.smart.retry.common.RetryTaskCreator;
+import com.smart.retry.common.RetryTaskOperator;
 import com.smart.retry.common.identifier.Identifier;
 import com.smart.retry.common.serializer.SmartSerializer;
+import com.smart.retry.core.config.SmartExecutorConfigure;
 import com.smart.retry.core.context.SmartContext;
 import com.smart.retry.core.identifier.MD5Identifier;
 import com.smart.retry.core.scanner.RetryScannerMannger;
@@ -13,6 +14,7 @@ import org.springframework.aop.Advisor;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Role;
@@ -22,6 +24,7 @@ import org.springframework.context.annotation.Role;
  * @Version CommonConfiguration.java, v 0.1 2025年02月14日 21:54 xiaoqiang
  * @Description:
  */
+@EnableConfigurationProperties(value  ={ SmartExecutorConfigure.class})
 public class CommonConfiguration{
 
 
@@ -61,12 +64,7 @@ public class CommonConfiguration{
         return new RetryTaskAdvisor(retryConfiguration);
     }
 
-    @Bean
-    @ConditionalOnBean(RetryConfiguration.class)
-    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-    public RetryTaskCreator retryTaskCreator(RetryConfiguration retryConfiguration) {
-        return new SimpleRetryTaskCreator(retryConfiguration);
-    }
+
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     @Primary
@@ -74,5 +72,11 @@ public class CommonConfiguration{
     public RetryScannerMannger retryScannerMannger() {
         RetryScannerMannger retryScannerMannger = new RetryScannerMannger();
         return retryScannerMannger;
+    }
+    @Bean
+    @ConditionalOnBean({RetryConfiguration.class})
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    public RetryTaskOperator retryTaskCreator(RetryConfiguration retryConfiguration, SmartExecutorConfigure smartExecutorConfigure) {
+        return new SimpleRetryTaskOperator(retryConfiguration,smartExecutorConfigure);
     }
 }

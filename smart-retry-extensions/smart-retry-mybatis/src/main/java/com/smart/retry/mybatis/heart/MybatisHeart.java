@@ -27,7 +27,7 @@ public class MybatisHeart implements RetryTaskHeart {
 
     private RetryShardingRepo retryShardingRepo;
 
-    private  String instanceId ;
+    private String instanceId;
 
     private static volatile Boolean flag = true;
 
@@ -36,8 +36,6 @@ public class MybatisHeart implements RetryTaskHeart {
 
         this.instanceId = instanceId;
     }
-
-
 
 
     public void destroy() {
@@ -63,7 +61,7 @@ public class MybatisHeart implements RetryTaskHeart {
 
         //2.初始化sharding
         List<RetryShardingDO> retryShardingDOS = retryShardingRepo.selectByInstanceId(instanceId);
-        if(CollectionUtils.isEmpty(retryShardingDOS)){
+        if (CollectionUtils.isEmpty(retryShardingDOS)) {
             RetryShardingDO retryShardingDO = new RetryShardingDO();
             retryShardingDO.setIntanceId(instanceId);
             retryShardingDO.setLastHeartbeat(new Date());
@@ -82,11 +80,11 @@ public class MybatisHeart implements RetryTaskHeart {
         public void run() {
             String instanceId = getInstanceId();
 
-            while (SmartRetryExit.isExit()){
+            while (SmartRetryExit.isExit()) {
                 try {
                     TimeUnit.SECONDS.sleep(3);
                     int heartBeatCount = retryShardingRepo.updateLastHeartbeat(instanceId, 1);
-                    if(LOGGER.isDebugEnabled()){
+                    if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("[MybatisHeart#heartBeat] heart beat success, instanceId:{}, heartBeatCount:{}", instanceId, heartBeatCount);
                     }
 
@@ -102,21 +100,20 @@ public class MybatisHeart implements RetryTaskHeart {
         public void run() {
             String instanceId = getInstanceId();
 
-            while (SmartRetryExit.isExit()){
+            while (SmartRetryExit.isExit()) {
                 try {
                     TimeUnit.SECONDS.sleep(5);
-                    int shardingCount = retryShardingRepo.scrambleDeadSharding(instanceId,1);
+                    int shardingCount = retryShardingRepo.scrambleDeadSharding(instanceId, 1);
                     List<RetryShardingDO> retryShardingDOS = retryShardingRepo.selectByInstanceId(instanceId);
-                    if(CollectionUtils.isEmpty(retryShardingDOS)){
+                    if (CollectionUtils.isEmpty(retryShardingDOS)) {
                         initHeart();
                         return;
                     }
-                    List<Long> shardingIds = Lists.newArrayList();
-                    retryShardingDOS.forEach(retryShardingDO -> {
-                        shardingIds.add(retryShardingDO.getId());
-                    });
-                    ShardingContextHolder.initShardingIndex(shardingIds);
-                    if(LOGGER.isDebugEnabled()){
+                    List<Long> existShardingIds = retryShardingDOS.stream().map(retryShardingDO -> {
+                        return retryShardingDO.getId();
+                    }).collect(Collectors.toList());
+                    ShardingContextHolder.initShardingIndex(existShardingIds);
+                    if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("[MybatisHeart#scrambleDeadSharding] scrambleDeadSharding success, instanceId:{}, shardingCount:{}", instanceId, shardingCount);
                     }
                 } catch (Exception e) {
@@ -126,7 +123,7 @@ public class MybatisHeart implements RetryTaskHeart {
         }
     }
 
-    private  String getInstanceId() {
+    private String getInstanceId() {
         //String instanceId = IpUtils.getIp()+":"+port;
         return instanceId;
     }

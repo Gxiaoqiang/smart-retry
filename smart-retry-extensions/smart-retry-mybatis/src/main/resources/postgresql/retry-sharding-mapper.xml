@@ -52,6 +52,7 @@
         SELECT id
         FROM retry_sharding
         WHERE last_heartbeat &lt; (NOW() - INTERVAL '180 seconds')
+            order by id  limit 1
         ) AS tmp
         WHERE retry_sharding.id = tmp.id
     </update>

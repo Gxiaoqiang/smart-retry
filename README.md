@@ -218,7 +218,7 @@ public class UserNotifyListener extends RetryListener<UserDTO> {
 
 ```java
 @Autowired
-private RetryTaskCreator retryTaskCreator;
+private RetryTaskOperator retryTaskOperator;
 
 public void triggerNotify() {
     UserDTO user = new UserDTO("张三", "zhangsan@example.com");
@@ -232,9 +232,23 @@ public void triggerNotify() {
         .withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.BACKOFF)
         .withParam(user);
 
-    retryTaskCreator.createTask(builder);
+   long taskId = retryTaskOperator.createTask(builder);
+
+    /** 
+     * 触发任务，如果调用该方法，则任务会优先放到队列中，等待执行。如果队列中存在任务，则需要等待队列中的任务执行完成。
+     * 适合立即执行的任务，如领域事件、通知、短信、等。
+     */
+   retryTaskOperator.invokeTaskAsync(taskId);
+
+    /**
+     *  触发任务，同步执行任务，如果调用该方法，则任务会立即执行。同时会阻塞当前线程，直到任务完成。
+     *  可以作为领域事件的的同步通知，如订单创建成功后通知用户。
+     */
+    retryTaskOperator.invokeTaskSync(taskId);
 }
+
 ```
+
 
 ---
 

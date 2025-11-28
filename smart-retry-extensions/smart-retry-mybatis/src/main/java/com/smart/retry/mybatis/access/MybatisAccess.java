@@ -51,6 +51,16 @@ public class MybatisAccess implements RetryTaskAccess {
         return retryTasks;
     }
 
+
+    public RetryTask getRetryTask(long taskId) {
+        RetryTaskDO retryTask = retryTaskRepo.getRetryTask(taskId);
+        if (retryTask == null) {
+            return null;
+        }
+        RetryTask retryTaskDo = new RetryTask();
+        BeanUtils.copyProperties(retryTask, retryTaskDo);
+        return retryTaskDo;
+    }
     @Override
     public List<RetryTask> listRetryTask() {
         List<RetryTaskDO> retryTaskDOS = retryTaskRepo.listAllWaitingRetryTask();
@@ -67,10 +77,10 @@ public class MybatisAccess implements RetryTaskAccess {
     }
 
     @Override
-    public void saveRetryTask(RetryTask retryTask) {
+    public long saveRetryTask(RetryTask retryTask) {
         RetryTaskDO retryTaskDO = new RetryTaskDO();
         BeanUtils.copyProperties(retryTask, retryTaskDO);
-        retryTaskRepo.saveRetryTask(retryTaskDO);
+       return retryTaskRepo.saveRetryTask(retryTaskDO);
     }
 
     @Override

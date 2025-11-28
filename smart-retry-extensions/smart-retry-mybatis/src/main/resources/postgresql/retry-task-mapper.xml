@@ -56,14 +56,14 @@
                 #{statusTmp}
             </foreach>)
             </if>
+            <if test="status != null">
+                AND status=#{status}
+            </if>
             <if test="shardingKeyList!=null and shardingKeyList.size>0">
                 and sharding_key in
                 (<foreach collection="shardingKeyList" index="index" separator="," item="shardingKeyTmp">
                 #{shardingKeyTmp}
-                </foreach>)
-            </if>
-            <if test="status != null">
-                AND status=#{status}
+            </foreach>)
             </if>
             <if test="taskCode != null and taskCode != ''">
                 AND task_code=#{taskCode}
@@ -117,7 +117,10 @@
         </trim>
     </sql>
 
-    <insert id="insert" parameterType="com.smart.retry.mybatis.entity.RetryTaskDO">
+    <insert id="insert" useGeneratedKeys="true"
+    keyProperty="id"
+    keyColumn="id" parameterType="com.smart.retry.mybatis.entity.RetryTaskDO">
+
         insert into retry_task (gmt_create, gmt_modified,
                                  task_desc,sharding_key,
                                 task_code, status, interval_second,
