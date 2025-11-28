@@ -291,6 +291,7 @@ public class SimpleContainer implements RetryContainer {
     }
 
     private static void doProduceTask(RetryTask retryTask, RetryConfiguration retryConfiguration) {
+        //任务存在则不处理，避免重复处理
         if (checkTaskExists(retryTask)) return;
 
         CompletableFuture<Void> future = CompletableFuture.runAsync(new ConsumerTask(retryTask, retryConfiguration), consumerExecutor);
@@ -312,17 +313,20 @@ public class SimpleContainer implements RetryContainer {
 
     static void invokeTaskSync(RetryTask retryTask,
                            RetryConfiguration retryConfiguration) {
+        //任务存在则不处理，避免重复处理
         if (checkTaskExists(retryTask)) return;
         new ConsumerTask(retryTask, retryConfiguration).run();
     }
 
     private static boolean checkTaskExists(RetryTask retryTask) {
         String uniqueKey = getUniqueKey(retryTask);
-        if (RetryTaskCache.isTaskExists(uniqueKey)) {
-            return true;
+        Boolean exists = RetryTaskCache.retryTasks.putIfAbsent(uniqueKey, true);
+        //插入成功，则任务不存在
+        if(exists == null){
+            return false;
         }
-        RetryTaskCache.addTaskFlag(uniqueKey);
-        return false;
+        //插入失败，则任务不存在
+        return true;
     }
 
 }

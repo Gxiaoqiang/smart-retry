@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class RetryTaskCache {
 
-    private static final ConcurrentHashMap<String, Boolean> retryTasks = new ConcurrentHashMap<>();
+     static final ConcurrentHashMap<String, Boolean> retryTasks = new ConcurrentHashMap<>();
 
 
     public static Boolean isTaskExists(String taskId) {
