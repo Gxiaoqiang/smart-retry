@@ -308,8 +308,6 @@ public class EmailAlertNotify implements RetryTaskNotify {
 
 ---
 
-你说得非常对！在快速开始文档中，确实应该**清晰说明 `RetryTaskBuilder` 各属性的含义和使用场景**，这对开发者理解配置至关重要。
-
 以下是针对 `RetryTaskBuilder<T>` 中所有属性的详细说明，可直接作为 **“重试任务属性详解”** 章节插入到 `README.md` 中：
 
 ---
