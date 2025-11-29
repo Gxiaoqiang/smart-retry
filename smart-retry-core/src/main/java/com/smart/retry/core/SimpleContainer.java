@@ -325,7 +325,7 @@ public class SimpleContainer implements RetryContainer {
         if(exists == null){
             return false;
         }
-        //插入失败，则任务不存在
+        //插入失败，则任务已经存在
         return true;
     }
 
