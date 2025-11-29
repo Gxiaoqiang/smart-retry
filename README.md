@@ -175,7 +175,7 @@ spring:
         before-days: 3  # 清理3天前的数据
         # cron: "0 0 2 * * *"  # 可选：自定义清理cron表达式
     
-      # 自定义线程池
+      # 自定义线程池，如果不配置则使用默认线程池
       executor:
         core-pool-size: 4
         max-pool-size: 8
