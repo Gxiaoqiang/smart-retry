@@ -220,7 +220,7 @@ public class SimpleContainer implements RetryContainer {
     }
 
     class ProducerTask implements Runnable {
-        private long SLEEP_BASE_TIME_MILLISECONDS = smartConfigure.getTaskFindInterval();
+        private long SLEEP_BASE_TIME_MILLISECONDS = smartConfigure.getTaskFindInterval() * 1000;
         private long MAX_SLEEP_TIME_MILLISECONDS = 20 * SLEEP_BASE_TIME_MILLISECONDS;
 
         private long sleepTimes = 0L;
@@ -271,6 +271,7 @@ public class SimpleContainer implements RetryContainer {
                     } else {
                         sleepTimes = 0L;
                     }
+
                     produceTask(allRetryTask);
                     sleep();
 
@@ -292,7 +293,10 @@ public class SimpleContainer implements RetryContainer {
 
     private static void doProduceTask(RetryTask retryTask, RetryConfiguration retryConfiguration) {
         //任务存在则不处理，避免重复处理
-        if (checkTaskExists(retryTask)) return;
+        if (checkTaskExists(retryTask)) {
+            LOGGER.warn("[SimpleContainer#doProduceTask]task exists,taskId:{}", retryTask.getId());
+            return;
+        }
 
         CompletableFuture<Void> future = CompletableFuture.runAsync(new ConsumerTask(retryTask, retryConfiguration), consumerExecutor);
     }
@@ -314,7 +318,10 @@ public class SimpleContainer implements RetryContainer {
     static void invokeTaskSync(RetryTask retryTask,
                            RetryConfiguration retryConfiguration) {
         //任务存在则不处理，避免重复处理
-        if (checkTaskExists(retryTask)) return;
+        if (checkTaskExists(retryTask)){
+            LOGGER.warn("[SimpleContainer#invokeTaskSync]task exists,taskId:{}", retryTask.getId());
+            return;
+        }
         new ConsumerTask(retryTask, retryConfiguration).run();
     }
 
