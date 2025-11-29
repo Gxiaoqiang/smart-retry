@@ -196,7 +196,7 @@ spring:
 ```java
 @RetryOnClass(
     taskCode = "userNotifyTask",
-    retryTaskNotifies = {EmailAlertNotify.class} // 可选：失败通知
+    retryTaskNotifies = {NotifyTest.class} // 可选：失败通知
 )
 public class UserNotifyListener extends RetryListener<UserDTO> {
 
@@ -210,6 +210,31 @@ public class UserNotifyListener extends RetryListener<UserDTO> {
             log.error("通知失败", e);
             return ExecuteResultStatus.FAIL; // 触发重试
         }
+    }
+}
+
+public class NotifyTest implements RetryTaskNotify {
+
+
+    // 每次执行完毕后，触发一次通知
+    @Override
+    public void oneTimeNotify(NotifyContext context) {
+
+        if(context.getThrowable()!=null){
+            String taskName = context.getRetryTask().getTaskCode();
+            String params = context.getRetryTask().getParameters();
+            System.out.println(context.getThrowable().getMessage());
+        }
+
+        System.out.println("oneTimeNotify");
+    }
+
+    // 任务执行次数达到设置的最大次数后通知
+    @Override
+    public void allRetryTaskFinishNotify(NotifyContext context) {
+
+
+        System.out.println("finishTaskNotify");
     }
 }
 ```
