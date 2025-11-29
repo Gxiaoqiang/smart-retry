@@ -1,5 +1,5 @@
 
-
+### 目前本组件已经在生产环境使用，欢迎大家使用。如果有问题、建议、意见，欢迎提 issue。
 ### ✅ 1. **重试任务与业务事务强一致（Transaction-Aware Retry）**
 
 这是 smart-retry 最重要的设计目标。。
@@ -370,6 +370,7 @@ public class EmailAlertNotify implements RetryTaskNotify {
     - `delaySecond` 只影响**第一次执行**
     - `intervalSecond` 影响**后续重试间隔**
 
----
+### 常见问题
+
 
 
