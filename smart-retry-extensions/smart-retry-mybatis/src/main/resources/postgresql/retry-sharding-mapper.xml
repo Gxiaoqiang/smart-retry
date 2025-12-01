@@ -42,19 +42,21 @@
 
 
     <!-- 兼容 PostgreSQL -->
-    <update id="scrambleDeadSharding" >
+    <update id="scrambleDeadSharding"  parameterType="map">
+        WITH expired AS (
+        SELECT id
+        FROM retry_sharding
+        WHERE last_heartbeat &lt; NOW() - (#{timeout}::text || ' seconds')::interval
+        ORDER BY id
+        LIMIT 1
+        )
         UPDATE retry_sharding
         SET
         status = #{status},
         instance_id = #{instanceId},
         last_heartbeat = NOW()
-        FROM (
-        SELECT id
-        FROM retry_sharding
-        WHERE last_heartbeat &lt; (NOW() - INTERVAL '360 seconds')
-            order by id  limit 1
-        ) AS tmp
-        WHERE retry_sharding.id = tmp.id
+        FROM expired
+        WHERE retry_sharding.id = expired.id
     </update>
 
 

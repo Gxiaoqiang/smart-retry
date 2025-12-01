@@ -11,6 +11,56 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class SmartExecutorConfigure {
 
 
+
+    public static class Health {
+
+        /**
+         * 客户端发送心跳的时间间隔
+         *
+         * 单位：秒
+         */
+        private int interval = 3;
+
+        /**
+         * 心跳超时时间：超过此时间未收到心跳，实例被视为死亡
+         * 单位：秒
+         */
+        private int timeout = 240;
+
+        /**
+         * 后台检测任务的扫描间隔（用于接管失效实例）
+         * 单位：秒
+         */
+        private int scanInterval = 5;
+
+        // getters & setters
+
+
+        public int getInterval() {
+            return interval;
+        }
+
+        public void setInterval(int interval) {
+            this.interval = interval;
+        }
+
+        public int getTimeout() {
+            return timeout;
+        }
+
+        public void setTimeout(int timeout) {
+            this.timeout = timeout;
+        }
+
+        public int getScanInterval() {
+            return scanInterval;
+        }
+
+        public void setScanInterval(int scanInterval) {
+            this.scanInterval = scanInterval;
+        }
+    }
+
     public static class ClearTask {
         // 是否开启清除任务，默认关闭
         private Boolean enabled = false;
@@ -91,6 +141,17 @@ public class SmartExecutorConfigure {
             this.taskMaxExecuteTimeout = taskMaxExecuteTimeout;
         }
 
+    }
+
+
+    private Health health = new Health();
+
+    public Health getHealth() {
+        return health;
+    }
+
+    public void setHealth(Health health) {
+        this.health = health;
     }
 
     private ClearTask clearTask = new ClearTask();

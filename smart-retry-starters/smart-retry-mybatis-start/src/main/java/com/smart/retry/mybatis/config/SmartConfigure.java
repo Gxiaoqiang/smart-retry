@@ -15,6 +15,7 @@ public class SmartConfigure {
     private String datasource = "dataSource";
 
 
+
     public String getDatasource() {
         return datasource;
     }

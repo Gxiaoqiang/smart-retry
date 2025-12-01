@@ -31,11 +31,11 @@ public class RetryShardingRepoImpl implements RetryShardingRepo {
     }
 
     @Override
-    public int scrambleDeadSharding(String instanceId, int status) {
+    public int scrambleDeadSharding(String instanceId, int status,int timeout) {
 
 
 
-        return retryShardingDao.scrambleDeadSharding(instanceId, status);
+        return retryShardingDao.scrambleDeadSharding(instanceId, status,timeout);
     }
 
     @Override

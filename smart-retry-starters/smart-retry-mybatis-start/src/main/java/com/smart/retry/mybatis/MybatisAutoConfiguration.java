@@ -106,7 +106,8 @@ public class MybatisAutoConfiguration extends CommonConfiguration
     }
 
     @Bean
-    public RetryTaskHeart retryTaskHeart(RetryShardingRepo retryShardingRepo) {
+
+    public RetryTaskHeart retryTaskHeart(RetryShardingRepo retryShardingRepo,SmartExecutorConfigure smartExecutorConfigure) {
         String serverPort = environment.getProperty("server.port","8080");
         String ip = IpUtils.getIp();
         if(ip == null){
@@ -114,7 +115,7 @@ public class MybatisAutoConfiguration extends CommonConfiguration
         }
 
         String instanceId = ip + ":" +serverPort;
-        return new MybatisHeart(retryShardingRepo,instanceId);
+        return new MybatisHeart(retryShardingRepo,instanceId,smartExecutorConfigure);
     }
 
 

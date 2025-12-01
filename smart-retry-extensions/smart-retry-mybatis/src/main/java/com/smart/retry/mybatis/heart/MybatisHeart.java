@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.smart.retry.common.RetryTaskHeart;
 import com.smart.retry.common.SmartRetryExit;
 import com.smart.retry.core.ShardingContextHolder;
+import com.smart.retry.core.config.SmartExecutorConfigure;
 import com.smart.retry.mybatis.entity.RetryShardingDO;
 import com.smart.retry.mybatis.repo.RetryShardingRepo;
 
@@ -29,12 +30,19 @@ public class MybatisHeart implements RetryTaskHeart {
 
     private String instanceId;
 
+    private SmartExecutorConfigure smartExecutorConfigure;
+
+
+
     private static volatile Boolean flag = true;
 
-    public MybatisHeart(RetryShardingRepo retryShardingRepo, String instanceId) {
+    public MybatisHeart(RetryShardingRepo retryShardingRepo,
+                        String instanceId,
+                        SmartExecutorConfigure smartExecutorConfigure) {
         this.retryShardingRepo = retryShardingRepo;
 
         this.instanceId = instanceId;
+        this.smartExecutorConfigure = smartExecutorConfigure;
     }
 
 
@@ -80,9 +88,11 @@ public class MybatisHeart implements RetryTaskHeart {
         public void run() {
             String instanceId = getInstanceId();
 
+            int interval = smartExecutorConfigure.getHealth().getInterval();
+
             while (SmartRetryExit.isExit()) {
                 try {
-                    TimeUnit.SECONDS.sleep(3);
+                    TimeUnit.SECONDS.sleep(interval);
                     int heartBeatCount = retryShardingRepo.updateLastHeartbeat(instanceId, 1);
                     if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("[MybatisHeart#heartBeat] heart beat success, instanceId:{}, heartBeatCount:{}", instanceId, heartBeatCount);
@@ -100,10 +110,12 @@ public class MybatisHeart implements RetryTaskHeart {
         public void run() {
             String instanceId = getInstanceId();
 
+            int timeout = smartExecutorConfigure.getHealth().getTimeout();
+            int scanInterval = smartExecutorConfigure.getHealth().getScanInterval();
             while (SmartRetryExit.isExit()) {
                 try {
-                    TimeUnit.SECONDS.sleep(5);
-                    int shardingCount = retryShardingRepo.scrambleDeadSharding(instanceId, 1);
+                    TimeUnit.SECONDS.sleep(scanInterval);
+                    int shardingCount = retryShardingRepo.scrambleDeadSharding(instanceId, 1,timeout);
                     List<RetryShardingDO> retryShardingDOS = retryShardingRepo.selectByInstanceId(instanceId);
                     if (CollectionUtils.isEmpty(retryShardingDOS)) {
                         initHeart();

@@ -26,7 +26,7 @@ public interface RetryShardingRepo {
      * @param instanceId
      * @return
      */
-    int scrambleDeadSharding(String instanceId,int status);
+    int scrambleDeadSharding(String instanceId,int status,int timeout);
 
     /**
      * 根据实例id查询分区数据

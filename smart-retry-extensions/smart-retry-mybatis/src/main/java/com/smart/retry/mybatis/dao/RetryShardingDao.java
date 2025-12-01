@@ -33,7 +33,8 @@ public interface RetryShardingDao {
      * @param instanceId
      * @return
      */
-    int scrambleDeadSharding(@Param("instanceId") String instanceId, @Param("status") int status);
+    int scrambleDeadSharding(@Param("instanceId") String instanceId,
+                             @Param("status") int status,@Param("timeout") int timeout);
 
     /**
      * 根据实例id查询分区数据

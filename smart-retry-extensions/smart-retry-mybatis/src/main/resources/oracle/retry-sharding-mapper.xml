@@ -72,14 +72,13 @@
         rs.status = #{status},
         rs.instance_id = #{instanceId},
         rs.last_heartbeat = SYSDATE
-        WHERE rs.id IN (
-        SELECT tmp.id
-        FROM (
+        WHERE rs.id = (
+        SELECT id FROM (
         SELECT id
         FROM retry_sharding
-        WHERE last_heartbeat &lt; (SYSDATE - INTERVAL '360' SECOND)  limit 1
-        ) tmp
-        )
+        WHERE last_heartbeat &lt; SYSDATE - (#{timeout} / 86400)
+        ORDER BY id
+        ) WHERE ROWNUM = 1
     </update>
 
     <update id="updateLastHeartbeat">
