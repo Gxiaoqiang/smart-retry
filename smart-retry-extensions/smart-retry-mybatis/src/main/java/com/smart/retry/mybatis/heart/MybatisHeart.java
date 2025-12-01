@@ -107,7 +107,7 @@ public class MybatisHeart implements RetryTaskHeart {
                     List<RetryShardingDO> retryShardingDOS = retryShardingRepo.selectByInstanceId(instanceId);
                     if (CollectionUtils.isEmpty(retryShardingDOS)) {
                         initHeart();
-                        return;
+                        continue;
                     }
                     List<Long> existShardingIds = retryShardingDOS.stream().map(retryShardingDO -> {
                         return retryShardingDO.getId();

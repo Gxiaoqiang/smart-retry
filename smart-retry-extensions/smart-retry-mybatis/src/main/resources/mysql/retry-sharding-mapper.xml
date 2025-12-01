@@ -45,7 +45,7 @@
         JOIN (
         SELECT id
         FROM retry_sharding
-        WHERE last_heartbeat &lt; (NOW() - INTERVAL 180 SECOND)
+        WHERE last_heartbeat &lt; (NOW() - INTERVAL 360 SECOND)
         order by id  limit 1
         ) AS tmp
         SET
