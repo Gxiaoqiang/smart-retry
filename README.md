@@ -173,7 +173,7 @@ spring:
       clear-task:
         enabled: true
         before-days: 3  # 清理3天前的数据
-        # cron: "0 0 2 * * *"  # 可选：自定义清理cron表达式
+        cron: 0 0 3 * * ?  # 可选：自定义清理cron时间节点,默认每天凌晨三单执行清理
       health:
         interval: 3 # 心跳间隔（秒），默认3秒
         timeout: 10 # 心跳超时时间：超过此时间未收到心跳，实例被视为死亡，默认240秒
