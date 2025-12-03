@@ -19,6 +19,7 @@ COMMENT ON COLUMN retry_sharding.last_heartbeat IS '最后心跳时间';
 
 -- 4. 创建索引
 CREATE INDEX idx_instance_id ON retry_sharding (instance_id);
+CREATE INDEX idx_last_heartbeat ON retry_sharding (last_heartbeat);
 
 -- 1. 创建表
 CREATE TABLE retry_task (

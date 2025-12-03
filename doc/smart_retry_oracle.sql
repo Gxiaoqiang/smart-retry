@@ -13,6 +13,8 @@ ALTER TABLE retry_sharding ADD CONSTRAINT pk_retry_sharding PRIMARY KEY (id);
 -- 创建索引
 CREATE INDEX idx_instance_id ON retry_sharding (instance_id);
 
+CREATE INDEX idx_last_heartbeat ON retry_sharding (last_heartbeat);
+
 -- 添加列注释
 COMMENT ON COLUMN retry_sharding.id IS 'ID';
 COMMENT ON COLUMN retry_sharding.gmt_create IS '创建时间';
