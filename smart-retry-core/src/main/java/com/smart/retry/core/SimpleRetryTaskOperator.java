@@ -76,6 +76,11 @@ public class SimpleRetryTaskOperator<T> implements RetryTaskOperator<T> {
             LOGGER.warn("[RetryTaskRepoImpl#updateRetryTask]retryTask status is not WAITING, id:{}", taskId);
             return null;
         }
+        int retryNum = retryTask.getRetryNum();
+        if (retryNum <= 0) {
+            LOGGER.warn("[RetryTaskRepoImpl#updateRetryTask]retryTask retryNum is less than 0, id:{}", taskId);
+            return null;
+        }
         return retryTask;
     }
 
