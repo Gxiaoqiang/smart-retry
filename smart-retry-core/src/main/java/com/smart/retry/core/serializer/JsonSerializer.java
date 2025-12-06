@@ -23,6 +23,7 @@ public class JsonSerializer implements SmartSerializer {
     public String serializer(Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
         List<SerializerObject> objectList = Lists.newArrayList();
+
         if (parameters == null || parameters.length == 0) {
             return GsonTool.toJsonString(objectList);
         }
