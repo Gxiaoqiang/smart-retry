@@ -4,6 +4,8 @@ import com.smart.retry.common.exception.RetryException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -15,10 +17,9 @@ import java.util.stream.Collectors;
  */
 public class ShardingContextHolder {
 
-    private static List<Long> shardingIndexSet = new ArrayList<>();
 
-
-    private static AtomicLong totalIndex = new AtomicLong(0);
+    private static Set<Long> shardingIndexSet = new TreeSet<>();
+    //private static AtomicLong totalIndex = new AtomicLong(0);
 
 
     private static ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
@@ -49,6 +50,10 @@ public class ShardingContextHolder {
         }
     }
 
+    /**
+     * 默认只取最小的一个分区
+     * @return
+     */
     public static Long getRandomShardingIndex() {
 
         try {
@@ -56,8 +61,7 @@ public class ShardingContextHolder {
             if (shardingIndexSet.isEmpty()) {
                 throw new RetryException("sharding index is not init");
             }
-            int index = (int)totalIndex.incrementAndGet() % shardingIndexSet.size();
-            return shardingIndexSet.get(index);
+            return shardingIndex().get(0);
         } finally {
             readLock.unlock();
         }
