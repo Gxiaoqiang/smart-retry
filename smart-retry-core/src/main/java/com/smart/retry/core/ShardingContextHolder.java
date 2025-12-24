@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -42,16 +41,15 @@ public class ShardingContextHolder {
         try {
             writeLock.lock();
             shardingIndexSet.clear();
+            shardingIndexSet.addAll(shardingIndexList);
 
-            shardingIndexSet.addAll(shardingIndexList.stream()
-                    .distinct().collect(Collectors.toSet()));
         } finally {
             writeLock.unlock();
         }
     }
 
     /**
-     * 默认只取最小的一个分区
+     * 默认只取最小的一个分区, 避免多个一个机器的任务分配到多个分区
      * @return
      */
     public static Long getRandomShardingIndex() {
