@@ -74,22 +74,25 @@ public class MybatisAutoConfiguration extends CommonConfiguration
         return scannerConfigurer;
     }
     @Bean("smartRetrySqlSessionFactory")
-    public SqlSessionFactory smartRetrySqlSessionFactory( SmartConfigure smartConfigure)
+    public SqlSessionFactory smartRetrySqlSessionFactory(SmartConfigure smartConfigure)
             throws Exception {
-        //environment.getActiveProfiles("spring.smart-retry.mybatis.dataSource")
         SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
-        //SmartConfigure smartConfigure = applicationContext.getBean(SmartConfigure.class);
-        if(smartConfigure == null||smartConfigure.getDatasource() == null) {
-            throw new IllegalArgumentException("spring.smart-retry.mybatis.datasource is not configured");
+        
+        if (smartConfigure == null || smartConfigure.getDatasource() == null) {
+            throw new IllegalArgumentException("spring.smart-retry.mybatis.datasource is not configured. " +
+                    "Please configure 'spring.smart-retry.mybatis.datasource' property.");
         }
-        DataSource dataSource =  (DataSource)applicationContext.getBean(smartConfigure.getDatasource());
+        
+        DataSource dataSource = (DataSource) applicationContext.getBean(smartConfigure.getDatasource());
 
         sqlSessionFactoryBean.setDataSource(dataSource);
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         DatabaseType dbType = DatabaseType.fromDataSource(dataSource);
 
-        if(dbType.getResource()== null){
-            throw new IllegalArgumentException("database type is not supported");
+        if (dbType.getResource() == null) {
+            throw new IllegalArgumentException("Database type '" + dbType.getName() + "' is not supported. " +
+                    "Supported types: " + DatabaseType.MYSQL.getName() + ", " + 
+                    DatabaseType.POSTGRESQL.getName() + ", " + DatabaseType.ORACLE.getName());
         }
 
         Resource resource = resolver.getResource(dbType.getResource());
@@ -106,16 +109,19 @@ public class MybatisAutoConfiguration extends CommonConfiguration
     }
 
     @Bean
-
-    public RetryTaskHeart retryTaskHeart(RetryShardingRepo retryShardingRepo,SmartExecutorConfigure smartExecutorConfigure) {
-        String serverPort = environment.getProperty("server.port","8080");
+    public RetryTaskHeart retryTaskHeart(RetryShardingRepo retryShardingRepo, SmartExecutorConfigure smartExecutorConfigure) {
+        String serverPort = environment.getProperty("server.port");
+        if (serverPort == null || serverPort.trim().isEmpty()) {
+            serverPort = "8080"; // 默认端口
+        }
+        
         String ip = IpUtils.getIp();
-        if(ip == null){
-            throw new IllegalArgumentException("ip is null");
+        if (ip == null) {
+            throw new IllegalArgumentException("Unable to determine server IP address");
         }
 
-        String instanceId = ip + ":" +serverPort;
-        return new MybatisHeart(retryShardingRepo,instanceId,smartExecutorConfigure);
+        String instanceId = ip + ":" + serverPort;
+        return new MybatisHeart(retryShardingRepo, instanceId, smartExecutorConfigure);
     }
 
 
@@ -131,17 +137,17 @@ public class MybatisAutoConfiguration extends CommonConfiguration
     }
     @Bean
     public HeartbeatContainer heartbeatContainer(RetryTaskHeart retryTaskHeart) {
-        LOGGER.warn("[MybatisAutoConfiguration#heartbeatContainer] heartbeatContainer init");
-        HeartbeatContainer retryContainer = new HeartbeatContainer(retryTaskHeart);
-        retryContainer.start();
-        return retryContainer;
+        LOGGER.info("[MybatisAutoConfiguration#heartbeatContainer] Initializing heartbeat container");
+        HeartbeatContainer heartbeatContainer = new HeartbeatContainer(retryTaskHeart);
+        heartbeatContainer.start();
+        return heartbeatContainer;
     }
     @Bean
     @ConditionalOnClass(HeartbeatContainer.class)
     public RetryContainer retryContainer(SmartExecutorConfigure smartExecutorConfigure, HeartbeatContainer heartbeatContainer,
                                          RetryConfiguration configuration) {
-        LOGGER.warn("[MybatisAutoConfiguration#retryContainer] retryContainer init");
-        RetryContainer retryContainer = new SimpleContainer(configuration,smartExecutorConfigure);
+        LOGGER.info("[MybatisAutoConfiguration#retryContainer] Initializing retry container");
+        RetryContainer retryContainer = new SimpleContainer(configuration, smartExecutorConfigure);
         retryContainer.start();
         return retryContainer;
     }

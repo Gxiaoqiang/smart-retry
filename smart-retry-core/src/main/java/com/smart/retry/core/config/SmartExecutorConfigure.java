@@ -3,9 +3,8 @@ package com.smart.retry.core.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * @Author xiaoqiang
- * @Version SmartConfigure.java, v 0.1 2025年09月19日 21:55 xiaoqiang
- * @Description: TODO
+ * Smart Retry 执行器配置类
+ * 配置心跳、任务清理、死信任务和线程池等相关参数
  */
 @ConfigurationProperties(prefix = "spring.smart-retry")
 public class SmartExecutorConfigure {
@@ -62,17 +61,24 @@ public class SmartExecutorConfigure {
     }
 
     public static class ClearTask {
-        // 是否开启清除任务，默认关闭
+        /**
+         * 是否开启清除任务，默认关闭
+         */
         private Boolean enabled = false;
 
-        //任务清理的时间，默认每天凌晨三点清理
+        /**
+         * 任务清理的时间，默认每天凌晨三点清理
+         */
         private String cron = "0 0 3 * * ?";
 
-
-        //默认每次清理100行数据，防止清理时对数据库的压力
+        /**
+         * 默认每次清理100行数据，防止清理时对数据库的压力
+         */
         private int limitRows = 100;
 
-        // 默认清理一个月之前的任务,天数单位
+        /**
+         * 默认清理一个月之前的任务,天数单位
+         */
         private int beforeDays = 30;
 
         public Boolean getEnabled() {
@@ -97,7 +103,7 @@ public class SmartExecutorConfigure {
 
         public void setBeforeDays(int beforeDays) {
             if (beforeDays < 1) {
-                throw new IllegalArgumentException("cleanDays must be greater than 0");
+                throw new IllegalArgumentException("beforeDays must be greater than 0");
             }
             this.beforeDays = beforeDays;
         }
@@ -119,10 +125,15 @@ public class SmartExecutorConfigure {
 
 
     public static class DeadTask {
-        // 是否开启死信任务,当开启死信任务时，任务执行超过 {@link #taskMaxExecuteTimeout} 秒，
-        // 则任务进入死信队列，等待人工干预，默认关闭
+        /**
+         * 是否开启死信任务,当开启死信任务时，任务执行超过 {@link #taskMaxExecuteTimeout} 秒，
+         * 则任务进入死信队列，等待人工干预，默认关闭
+         */
         private Boolean deadTaskCheck = false;
-        // 任务执行超时时间，单位秒
+
+        /**
+         * 任务执行超时时间，单位秒
+         */
         private int taskMaxExecuteTimeout = 30 * 60;
 
         public Boolean getDeadTaskCheck() {
@@ -175,7 +186,9 @@ public class SmartExecutorConfigure {
         this.deadTask = deadTask;
     }
 
-    // 定时任务查询的时间间隔，控制任务查询频率,单位秒
+    /**
+     * 定时任务查询的时间间隔，控制任务查询频率,单位秒
+     */
     private int taskFindInterval = 20;
 
     private Executor executor = new Executor();
