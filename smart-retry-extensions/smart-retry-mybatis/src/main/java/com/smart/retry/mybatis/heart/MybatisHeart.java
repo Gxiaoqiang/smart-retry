@@ -34,7 +34,6 @@ public class MybatisHeart implements RetryTaskHeart {
 
 
 
-    private static volatile Boolean flag = true;
 
     public MybatisHeart(RetryShardingRepo retryShardingRepo,
                         String instanceId,
@@ -45,18 +44,6 @@ public class MybatisHeart implements RetryTaskHeart {
         this.smartExecutorConfigure = smartExecutorConfigure;
     }
 
-
-    public void destroy() {
-        flag = false;
-    }
-
-    static {
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            public void run() {
-                flag = false;
-            }
-        });
-    }
 
     /**
      * 初始化心跳
