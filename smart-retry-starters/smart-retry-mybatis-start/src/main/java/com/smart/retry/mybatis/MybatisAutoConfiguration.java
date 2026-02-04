@@ -112,7 +112,7 @@ public class MybatisAutoConfiguration extends CommonConfiguration
     public RetryTaskHeart retryTaskHeart(RetryShardingRepo retryShardingRepo, SmartExecutorConfigure smartExecutorConfigure) {
         String serverPort = environment.getProperty("server.port");
         if (serverPort == null || serverPort.trim().isEmpty()) {
-            serverPort = "8080"; // 默认端口
+            serverPort = "45678"; // 默认端口
         }
         
         String ip = IpUtils.getIp();
