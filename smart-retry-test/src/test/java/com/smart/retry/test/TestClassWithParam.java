@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
  * @Description: TODO
  */
 @RetryOnClass(taskCode = "TestClassWithParam")
-public class TestClassWithParam extends RetryLinstener<TestModel> {
+public class TestClassWithParam implements RetryLinstener<TestModel> {
 
     @Override
     public ExecuteResultStatus consume(TestModel param) {

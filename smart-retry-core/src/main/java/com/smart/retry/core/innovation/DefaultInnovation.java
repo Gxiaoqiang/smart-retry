@@ -2,6 +2,7 @@ package com.smart.retry.core.innovation;
 
 import com.google.gson.reflect.TypeToken;
 import com.smart.retry.common.RetryConfiguration;
+import com.smart.retry.common.RetryLinstener;
 import com.smart.retry.common.constant.ExecuteResultStatus;
 import com.smart.retry.common.constant.RetryTaskStatus;
 import com.smart.retry.common.constant.RetryTaskTypeEnum;
@@ -19,6 +20,7 @@ import com.smart.retry.core.nextPlanTimeStrategy.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aop.support.AopUtils;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -147,7 +149,8 @@ public class DefaultInnovation implements SmartInnovation {
             parameterValue = GsonTool.fromJson(retryTask.getParameters(), type);
             Object[] args = new Object[1];
             args[0] = parameterValue;
-            return method.invoke(taskObject.getTargetObj(), args);
+
+            return invokeRetryLinstener(taskObject, args[0]);
         }
         if (retryTaskTypeEnum == RetryTaskTypeEnum.METHOD) {
             Object[] args = retryConfiguration.getSmartSerializer().deSerializer(method, retryTask.getParameters());
@@ -156,19 +159,73 @@ public class DefaultInnovation implements SmartInnovation {
         throw new RetryException("retryTaskTypeEnum is not support");
     }
 
+    private ExecuteResultStatus invokeRetryLinstener(RetryTaskObject taskObject, Object args) throws Throwable {
+
+        RetryLinstener retryLinstener = (RetryLinstener) taskObject.getTargetObj();
+        try {
+
+            retryLinstener.beforeConsume(args);
+        } catch (Exception ex) {
+            LOGGER.error("retry-task listener beforeConsume {}", ex.getMessage(), ex);
+        }
+
+        ExecuteResultStatus consumeStatus = null;
+        try {
+            consumeStatus = retryLinstener.consume(args);
+            return consumeStatus;
+        } finally {
+            try {
+                retryLinstener.afterConsume(consumeStatus, args);
+            }catch (Exception ex){
+                LOGGER.error("retry-task listener afterConsume {}", ex.getMessage(), ex);
+            }
+        }
+
+    }
 
     /**
      * 获取真实的参数类型
      * @param taskObject
      * @return
      */
-    private  Type getRealType(RetryTaskObject taskObject) {
+
+    private Type getRealType(RetryTaskObject taskObject) {
+
+
+        Object targetObj = taskObject.getTargetObj();
+        Class<?> clazz = targetObj.getClass();
+        //判断对象是否是代理对象
+        if (AopUtils.isAopProxy(targetObj)) {
+            clazz = AopUtils.getTargetClass(targetObj);
+        }
+        for (Type genericInterface : clazz.getGenericInterfaces()) {
+            if (genericInterface instanceof ParameterizedType) {
+                ParameterizedType pt = (ParameterizedType) genericInterface;
+                if (pt.getRawType() == RetryLinstener.class) {
+                    Type[] args = pt.getActualTypeArguments();
+                    if (args.length > 0) {
+                        Type targetType = args[0];
+
+                        // 不要试图转成 Class！保留完整的 Type（可能是 ParameterizedType）
+                        // 例如：TestModel<String>、List<Map<String, Object>> 等都能正确表示
+
+                        LOGGER.debug("[getRealType] Resolved generic type: {}", targetType.getTypeName());
+                        return targetType;
+                    }
+                }
+            }
+        }
+
+        LOGGER.warn("[getRealType] Failed to resolve generic type for: {}", clazz.getName());
+        return Object.class; // fallback
+    }
+    /*private  Type getRealType(RetryTaskObject taskObject) {
         Type superClass = taskObject.getTargetObj().getClass().getGenericSuperclass();
         ParameterizedType parameterizedType = (ParameterizedType) superClass;
         Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
         Type type = TypeToken.get(actualTypeArguments[0]).getType();
         return type;
-    }
+    }*/
 
     private void notify(RetryTaskObject taskObject, String taskCode, NotifyContext notifyContext, ExecuteResultStatus executeResultStatus, Throwable throwable) {
         Class<? extends RetryTaskNotify>[] clazzs = taskObject.getRetryTaskNotify();

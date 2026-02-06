@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
  * @Description: TODO
  */
 @RetryOnClass(taskCode = "TestClassWithList",retryTaskNotifies = {NotifyTest.class})
-public class TestClassWithList extends RetryLinstener<List<TestModel>> {
+public class TestClassWithList implements RetryLinstener<List<TestModel>> {
 
 
     private static int count = 0;

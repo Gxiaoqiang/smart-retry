@@ -60,6 +60,27 @@ public class MybatisTest extends AbstractTest {
         //System.out.println(retryContainer);
     }
 
+
+    @Test
+    public void test_TestClassWithTran() throws InterruptedException {
+
+        RetryTaskBuilder<List<TestModel>> retryTaskBuilder = RetryTaskBuilder.of()
+                .withRetryNum(3)
+                .withTaskCode("TestTransaction")
+                .withTaskDesc("Test")
+                .withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.BACKOFF)
+                .withIntervalSecond(10)
+                .withDelaySecond(2);
+        retryTaskBuilder.withParam(Lists.newArrayList(new TestModel("123", "456",2),
+                new TestModel("789", "456",3)));
+        retryTaskOperator.createTask(retryTaskBuilder);
+
+        TimeUnit.SECONDS.sleep(1000);
+
+        //retryTaskCreator.createTask(retryTask);
+
+        //retryTaskCreator.createTask(testRetry, "testException", new Object[]{}, new Class[]{});
+    }
     @Test
     public void test_TestClassWithList() throws InterruptedException {
 

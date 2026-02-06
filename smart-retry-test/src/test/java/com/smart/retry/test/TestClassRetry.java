@@ -11,7 +11,7 @@ import com.smart.retry.common.constant.ExecuteResultStatus;
  */
 
 @RetryOnClass(taskCode = "test_class_retry_task_code",retryTaskNotifies = {NotifyTest.class})
-public class TestClassRetry extends RetryLinstener<String> {
+public class TestClassRetry implements RetryLinstener<String> {
     @Override
     public ExecuteResultStatus consume(String param) {
 

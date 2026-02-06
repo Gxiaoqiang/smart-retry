@@ -6,14 +6,19 @@ import com.smart.retry.common.constant.RetryTaskStatus;
 import com.smart.retry.common.exception.RetryException;
 import com.smart.retry.common.model.RetryTask;
 import com.smart.retry.common.model.RetryTaskBuilder;
+import com.smart.retry.common.model.RetryTaskObject;
+import com.smart.retry.common.serializer.SmartSerializer;
 import com.smart.retry.common.utils.GsonTool;
 import com.smart.retry.common.utils.IpUtils;
+import com.smart.retry.core.cache.RetryCache;
 import com.smart.retry.core.config.SmartExecutorConfigure;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.lang.reflect.Method;
 
 import static org.springframework.transaction.annotation.Propagation.REQUIRED;
 
@@ -40,6 +45,22 @@ public class SimpleRetryTaskOperator<T> implements RetryTaskOperator<T> {
 
         RetryTask retryTask = new RetryTask();
         BeanUtils.copyProperties(retryTaskBuilder, retryTask);
+
+        /*String taskCode = retryTaskBuilder.getTaskCode();
+        RetryTaskObject taskObject = RetryCache.get(taskCode);
+        if(taskObject == null){
+
+            LOGGER.warn("[SimpleRetryTaskOperator#createTask]task code exists, taskCode:{}", taskCode);
+            throw new RetryException("task code not exists:"+taskCode);
+
+        }
+        SmartSerializer smartSerializer = retryConfiguration.getSmartSerializer();
+
+        Method method = taskObject.getMethod();
+        Object[] args = new Object[1];
+        args[0] = retryTaskBuilder.getParam();
+        String parameters = smartSerializer.serializer(method, args);
+        retryTask.setParameters(parameters);*/
 
         retryTask.setNextPlanTimeStrategy(retryTaskBuilder.getNextPlanTimeStrategy().getCode());
         retryTask.setParameters(GsonTool.toJsonString(retryTaskBuilder.getParam()));

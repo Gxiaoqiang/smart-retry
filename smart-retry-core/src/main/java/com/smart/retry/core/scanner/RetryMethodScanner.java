@@ -8,9 +8,11 @@ import com.smart.retry.common.scanner.RetryScanner;
 import com.smart.retry.core.cache.RetryCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -34,14 +36,14 @@ public class RetryMethodScanner implements RetryScanner {
             Object bean = applicationContext.getBean(beanName);
 
             //1、查找标有注解@see RetryableOnMethod 的方法
-            resolveMethodAnnotation(bean);
+            resolveMethodAnnotation(bean, applicationContext);
         }
 
     }
 
 
 
-    private void resolveMethodAnnotation(Object bean) {
+    private void resolveMethodAnnotation(Object bean,ApplicationContext applicationContext) {
         Map<Method, RetryOnMethod> methodTMap = MethodIntrospector.selectMethods(bean.getClass(),
                 new MethodIntrospector.MetadataLookup<RetryOnMethod>() {
                     @Override
@@ -56,12 +58,21 @@ public class RetryMethodScanner implements RetryScanner {
 
         methodTMap.forEach((method, retryOnMethod) -> {
             String taskCode = method.getDeclaringClass().getName() + "#" + method.getName();
+            boolean hasTransactional = method.isAnnotationPresent(Transactional.class) ||
+                    method.getDeclaringClass().isAnnotationPresent(Transactional.class);
+            Object proxy = bean;
+            if (hasTransactional) {
+                Class<?> beanType = AopUtils.getTargetClass(bean); // 处理代理类获取真实类型
+                proxy = applicationContext.getBean(beanType);
+                logger.warn("{} has transactional, please check", taskCode);
+            }
+
             RetryTaskObject retryTaskObject =
                     RetryTaskObject.of().withRetryCallback(retryOnMethod.retryCallback())
                             .withTaskCode(taskCode)
                             .withMethod(method)
                             .withExcludes(retryOnMethod.exclude())
-                            .withBeanObj(bean)
+                            .withBeanObj(proxy)
                             .withRetryTaskNotify(retryOnMethod.retryTaskNotifies())
                             .withParams(method.getParameters())
                             .withRetryType(RetryTaskTypeEnum.METHOD);
