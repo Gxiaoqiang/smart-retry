@@ -64,13 +64,14 @@
 
 ### 🧩 设计思路
 
-| 设计目标 | 实现手段 |
-|--------|--------|
-| **可靠性** | 任务持久化 + 事务绑定 |
-| **一致性** | 本地事务内注册重试任务 |
-| **可用性** | 多实例自动接管 + 故障恢复 |
-| **易用性** | Starter 自动配置 + 简洁 API |
-| **轻量性** | 无外部依赖，仅需 DB |
+| 设计目标     | 实现手段                 |
+|----------|----------------------|
+| **可靠性**  | 任务持久化 + 事务绑定         |
+| **一致性**  | 本地事务内注册重试任务          |
+| **可用性**  | 多实例自动接管 + 故障恢复       |
+| **易用性**  | Starter 自动配置 + 简洁 API |
+| **轻量性**  | 无外部依赖，仅需 DB          |
+| **事务执行** | 如果重试方法存在事务声明，会参与事务执行 |
 
 ---
 
@@ -203,9 +204,16 @@ spring:
     taskCode = "userNotifyTask",
     retryTaskNotifies = {NotifyTest.class} // 可选：失败通知
 )
-public class UserNotifyListener extends RetryListener<UserDTO> {
+public class UserNotifyListener implements RetryListener<UserDTO> {
 
+    /**
+     * 消费任务 ,
+     * 如果存在事务，会参与事务执行
+     * @param param 参数
+     * @return 执行结果
+     */
     @Override
+    @Transactional
     public ExecuteResultStatus consume(UserDTO param) {
         try {
             // 调用第三方通知服务
@@ -303,6 +311,11 @@ public void testInvokeTask() {
 @Service
 public class OrderService {
 
+    /**
+     * 如果调用失败会自动重试
+     * 如果存在事务，会参与事务执行
+     * @param order
+     */
     @RetryOnMethod(
         maxAttempt = 3,
         firstDelaySecond = 2,
@@ -311,6 +324,7 @@ public class OrderService {
         include = {RemoteCallException.class},
         retryTaskNotifies = {SmsAlertNotify.class}
     )
+    @Transactional
     public void createOrder(Order order) {
         // 调用支付系统
         paymentClient.charge(order);
