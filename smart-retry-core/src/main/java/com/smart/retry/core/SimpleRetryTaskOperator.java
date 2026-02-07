@@ -46,21 +46,6 @@ public class SimpleRetryTaskOperator<T> implements RetryTaskOperator<T> {
         RetryTask retryTask = new RetryTask();
         BeanUtils.copyProperties(retryTaskBuilder, retryTask);
 
-        /*String taskCode = retryTaskBuilder.getTaskCode();
-        RetryTaskObject taskObject = RetryCache.get(taskCode);
-        if(taskObject == null){
-
-            LOGGER.warn("[SimpleRetryTaskOperator#createTask]task code exists, taskCode:{}", taskCode);
-            throw new RetryException("task code not exists:"+taskCode);
-
-        }
-        SmartSerializer smartSerializer = retryConfiguration.getSmartSerializer();
-
-        Method method = taskObject.getMethod();
-        Object[] args = new Object[1];
-        args[0] = retryTaskBuilder.getParam();
-        String parameters = smartSerializer.serializer(method, args);
-        retryTask.setParameters(parameters);*/
 
         retryTask.setNextPlanTimeStrategy(retryTaskBuilder.getNextPlanTimeStrategy().getCode());
         retryTask.setParameters(GsonTool.toJsonString(retryTaskBuilder.getParam()));
