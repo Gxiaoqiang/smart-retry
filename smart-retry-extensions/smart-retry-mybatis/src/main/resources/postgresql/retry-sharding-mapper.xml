@@ -31,7 +31,7 @@
 			last_heartbeat)
 		VALUES (now(),
 		        #{creatorId},
-				#{intanceId},
+				#{instanceId},
 				#{status},
 				#{lastHeartbeat})
 	</insert>
