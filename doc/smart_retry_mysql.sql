@@ -2,7 +2,8 @@ CREATE TABLE `retry_sharding` (
                                `id` bigint NOT NULL PRIMARY KEY AUTO_INCREMENT COMMENT 'ID',
                                 gmt_create     DATETIME  NOT NULL COMMENT '创建时间',
                                 status         TINYINT(4) NOT NULL COMMENT '状态 0:未分配 1:已分配',
-                                instance_id VARCHAR(64) comment '当前持有分片的实例ID',
+                                creator_id VARCHAR(128) comment '创建分片的实例ID',
+                                instance_id VARCHAR(128) comment '当前持有分片的实例ID',
                                 last_heartbeat DATETIME DEFAULT NULL COMMENT '最后心跳时间',
                                 KEY `idx_instance_id` (`instance_id`),
                                 KEY `idx_last_heartbeat` (`last_heartbeat`)

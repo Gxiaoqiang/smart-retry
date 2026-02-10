@@ -3,7 +3,8 @@ CREATE TABLE retry_sharding (
     id              NUMBER(20)      NOT NULL,
     gmt_create      DATE            NOT NULL,
     status          NUMBER(3)       NOT NULL,
-    instance_id     VARCHAR2(64),
+    creator_id     VARCHAR2(128),
+    instance_id     VARCHAR2(128),
     last_heartbeat  DATE
 );
 
@@ -19,6 +20,7 @@ CREATE INDEX idx_last_heartbeat ON retry_sharding (last_heartbeat);
 COMMENT ON COLUMN retry_sharding.id IS 'ID';
 COMMENT ON COLUMN retry_sharding.gmt_create IS '创建时间';
 COMMENT ON COLUMN retry_sharding.status IS '状态 0:未分配 1:已分配';
+COMMENT ON COLUMN retry_sharding.creator_id IS '创建当前分片的实例ID';
 COMMENT ON COLUMN retry_sharding.instance_id IS '当前持有分片的实例ID';
 COMMENT ON COLUMN retry_sharding.last_heartbeat IS '最后心跳时间';
 

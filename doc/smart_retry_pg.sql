@@ -3,7 +3,8 @@ CREATE TABLE retry_sharding (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     gmt_create TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     status SMALLINT NOT NULL,
-    instance_id VARCHAR(64),
+    creator_id VARCHAR(128),
+    instance_id VARCHAR(128),
     last_heartbeat TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL
 );
 
@@ -14,6 +15,7 @@ COMMENT ON TABLE retry_sharding IS '分片元数据表';
 COMMENT ON COLUMN retry_sharding.id IS 'ID';
 COMMENT ON COLUMN retry_sharding.gmt_create IS '创建时间';
 COMMENT ON COLUMN retry_sharding.status IS '状态 0:未分配 1:已分配';
+COMMENT ON COLUMN retry_sharding.creator_id IS '创建当前分片的创建者ID';
 COMMENT ON COLUMN retry_sharding.instance_id IS '当前持有分片的实例ID';
 COMMENT ON COLUMN retry_sharding.last_heartbeat IS '最后心跳时间';
 

@@ -6,7 +6,8 @@
 	<resultMap id="RetryTaskMAP" type="com.smart.retry.mybatis.entity.RetryShardingDO">
 		<result column="id" property="id"/>
 		<result column="gmt_create" property="gmtCreate"/>
-		<result column="instance_id" property="intanceId"/>
+		<result column="creator_id" property="creatorId"/>
+		<result column="instance_id" property="instanceId"/>
 		<result column="status" property="status"/>
 		<result column="last_heartbeat" property="lastHeartbeat"/>
 	</resultMap>
@@ -14,6 +15,7 @@
 	<sql id="all_column">
 		id,
 		gmt_create,
+		creator_id,
 		instance_id,
 		status,
 		last_heartbeat
@@ -22,10 +24,12 @@
 	<insert id="insert">
 		INSERT INTO retry_sharding (
 			gmt_create,
+		    creator_id,
 			instance_id,
 			status,
 			last_heartbeat)
 		VALUES (now(),
+			   #{creatorId},
 				#{intanceId},
 				#{status},
 				#{lastHeartbeat})

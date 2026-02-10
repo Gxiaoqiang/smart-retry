@@ -12,18 +12,20 @@ import java.util.Date;
 public class RetryShardingDO extends BaseEntity {
 
 
-    private String intanceId;
+    private String creatorId;
+
+    private String instanceId;
 
     private Date lastHeartbeat;
 
     private int status;
 
-    public String getIntanceId() {
-        return intanceId;
+    public String getInstanceId() {
+        return instanceId;
     }
 
-    public void setIntanceId(String intanceId) {
-        this.intanceId = intanceId;
+    public void setInstanceId(String instanceId) {
+        this.instanceId = instanceId;
     }
 
     public Date getLastHeartbeat() {
@@ -40,5 +42,13 @@ public class RetryShardingDO extends BaseEntity {
 
     public void setStatus(int status) {
         this.status = status;
+    }
+
+    public String getCreatorId() {
+        return creatorId;
+    }
+
+    public void setCreatorId(String creatorId) {
+        this.creatorId = creatorId;
     }
 }

@@ -1,6 +1,5 @@
 package com.smart.retry.mybatis.heart;
 
-import com.google.common.collect.Lists;
 import com.smart.retry.common.RetryTaskHeart;
 import com.smart.retry.common.SmartRetryExit;
 import com.smart.retry.core.ShardingContextHolder;
@@ -58,7 +57,8 @@ public class MybatisHeart implements RetryTaskHeart {
         List<RetryShardingDO> retryShardingDOS = retryShardingRepo.selectByInstanceId(instanceId);
         if (CollectionUtils.isEmpty(retryShardingDOS)) {
             RetryShardingDO retryShardingDO = new RetryShardingDO();
-            retryShardingDO.setIntanceId(instanceId);
+            retryShardingDO.setCreatorId(instanceId);
+            retryShardingDO.setInstanceId(instanceId);
             retryShardingDO.setLastHeartbeat(new Date());
             retryShardingRepo.saveRetrySharding(retryShardingDO);
             retryShardingDOS = retryShardingRepo.selectByInstanceId(instanceId);

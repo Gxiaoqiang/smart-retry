@@ -7,6 +7,7 @@
         <!-- 注意：原XML中 property="intanceId" 应该是拼写错误，应为 instanceId -->
         <result column="id" property="id"/>
         <result column="gmt_create" property="gmtCreate"/>
+        <result column="creator_id" property="creatorId"/>
         <result column="instance_id" property="instanceId"/> <!-- 修正拼写 -->
         <result column="status" property="status"/>
         <result column="last_heartbeat" property="lastHeartbeat"/>
@@ -15,6 +16,7 @@
     <sql id="all_column">
         id,
         gmt_create,
+        creator_id,
         instance_id,
         status,
         last_heartbeat
@@ -29,12 +31,14 @@
         INSERT INTO retry_sharding (
         id, <!-- 显式插入ID -->
         gmt_create,
+        creator_id,
         instance_id,
         status,
         last_heartbeat)
         VALUES (
         #{id}, <!-- 使用 selectKey 获取的 ID -->
         SYSDATE, <!-- Oracle 使用 SYSDATE -->
+        #{creatorId},
         #{instanceId}, <!-- 修正后的属性名 -->
         #{status},
         #{lastHeartbeat})
