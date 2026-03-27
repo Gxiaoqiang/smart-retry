@@ -119,7 +119,11 @@ public class MybatisTest extends AbstractTest {
                     .withIntervalSecond(20)
                     .withDelaySecond(2)
                     .withParam(new TestModel("123", "456",2));
-            retryTaskBuilder.withParam(new TestModel("123", "456",2));
+            TestModel testModel = new TestModel("123", "456",2);
+            TestModel.ModelBuilder modelBuilder = new TestModel.ModelBuilder();
+            modelBuilder.id("123").name("456").age(2);
+            testModel.setModelBuilder(modelBuilder);
+            retryTaskBuilder.withParam(testModel);
             retryTaskOperator.createTask(retryTaskBuilder);
         }catch (Exception e){
             e.printStackTrace();

@@ -12,11 +12,22 @@ public class TestModel {
 
     private int age;
 
+    private ModelBuilder modelBuilder;
+
+
 
     public TestModel(String id, String name, int age) {
         this.id = id;
         this.name = name;
         this.age = age;
+    }
+
+    public ModelBuilder getModelBuilder() {
+        return modelBuilder;
+    }
+
+    public void setModelBuilder(ModelBuilder modelBuilder) {
+        this.modelBuilder = modelBuilder;
     }
 
     public String getId() {
@@ -42,4 +53,27 @@ public class TestModel {
     public void setAge(int age) {
         this.age = age;
     }
+
+
+    public static class ModelBuilder {
+
+        private String id;
+        private String name;
+        private int age;
+
+        public ModelBuilder id(String id) {
+            this.id = id;
+            return this;
+        }
+        public ModelBuilder name(String name) {
+            this.name = name;
+            return this;
+        }
+        public ModelBuilder age(int age) {
+            this.age = age;
+            return this;
+        }
+
+    }
 }
+
