@@ -24,9 +24,9 @@ public class GsonTool {
     static {
         GsonBuilder gsonBuilder = new GsonBuilder();
 
-        gsonBuilder.enableComplexMapKeySerialization() //当Map的key为复杂对象时,需要开启该方法
-                //.serializeNulls() //当字段值为空或null时，依然对该字段进行转换
-                //.excludeFieldsWithoutExposeAnnotation()//打开Export注解，但打开了这个注解,副作用，要转换和不转换都要加注解
+        gsonBuilder.enableComplexMapKeySerialization() //当 Map 的 key 为复杂对象时，需要开启该方法
+                //.serializeNulls() //当字段值为空或 null 时，依然对该字段进行转换
+                //.excludeFieldsWithoutExposeAnnotation()//打开 Export 注解，但打开了这个注解，副作用，要转换和不转换都要加注解
                 .setDateFormat("yyyy-MM-dd HH:mm:ss")//序列化日期格式  "yyyy-MM-dd"
                 //.setPrettyPrinting() //自动格式化换行
                 .disableHtmlEscaping(); //防止特殊字符出现乱码
@@ -38,18 +38,21 @@ public class GsonTool {
         // Ensure the DateTypeAdapter is null safe
         TypeAdapter<Date> safeDateTypeAdapter = dateTypeAdapter.nullSafe();
         GSON = new GsonBuilder()
+                .enableComplexMapKeySerialization()
+                .setDateFormat("yyyy-MM-dd HH:mm:ss")
+                .disableHtmlEscaping()
                 .registerTypeAdapter(Date.class, safeDateTypeAdapter)
                 .create();
         GsonBuilder gsonBuilder1 = new GsonBuilder();
 
-        gsonBuilder1.enableComplexMapKeySerialization() //当Map的key为复杂对象时,需要开启该方法
-                .serializeNulls() //当字段值为空或null时，依然对该字段进行转换
-                //.excludeFieldsWithoutExposeAnnotation()//打开Export注解，但打开了这个注解,副作用，要转换和不转换都要加注解
+        gsonBuilder1.enableComplexMapKeySerialization() //当 Map 的 key 为复杂对象时，需要开启该方法
+                .serializeNulls() //当字段值为空或 null 时，依然对该字段进行转换
+                //.excludeFieldsWithoutExposeAnnotation()//打开 Export 注解，但打开了这个注解，副作用，要转换和不转换都要加注解
                 .setDateFormat("yyyy-MM-dd HH:mm:ss")//序列化日期格式  "yyyy-MM-dd"
                 //.setPrettyPrinting() //自动格式化换行
                 .disableHtmlEscaping(); //防止特殊字符出现乱码
 
-        GSON_NULL = new GsonBuilder()
+        GSON_NULL = gsonBuilder1
                 .registerTypeAdapter(Date.class, safeDateTypeAdapter)
                 .create();
     }
