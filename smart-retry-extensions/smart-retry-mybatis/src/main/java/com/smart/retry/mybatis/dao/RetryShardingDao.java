@@ -42,4 +42,21 @@ public interface RetryShardingDao {
      * @return
      */
     List<RetryShardingDO> selectByInstanceId(String instanceId);
+
+    /**
+     * 查询所有分片数据（分页）
+     */
+    List<RetryShardingDO> selectAllWithPage(@Param("offset") int offset, @Param("limit") int limit,
+                                            @Param("creatorId") String creatorId,
+                                            @Param("instanceId") String instanceId);
+
+    /**
+     * 统计分片总数
+     */
+    long countAll(@Param("creatorId") String creatorId, @Param("instanceId") String instanceId);
+
+    /**
+     * 根据ID查询分片
+     */
+    RetryShardingDO selectById(Long id);
 }

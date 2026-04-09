@@ -35,4 +35,8 @@ public interface RetryTaskDao {
                           @Param("limitRows") int limitRows,
     @Param("shardingKeyList")List<Long> shardingKeyList);
 
+    /**
+     * 批量删除任务
+     */
+    int batchDeleteByIds(@Param("ids") List<Long> ids);
 }

@@ -83,7 +83,7 @@ COMMENT ON COLUMN retry_task.task_desc IS '任务描述';
 COMMENT ON COLUMN retry_task.task_code IS '需要执行的任务编码';
 COMMENT ON COLUMN retry_task.parameters IS '参数数据';
 COMMENT ON COLUMN retry_task.attribute IS '属性';
-COMMENT ON COLUMN retry_task.status IS '最终执行状态 0:待执行,1:执行中,-1:执行失败,2:执行成功';
+COMMENT ON COLUMN retry_task.status IS '最终执行状态 0:待执行,1:执行中,3:执行失败,2:执行成功';
 COMMENT ON COLUMN retry_task.interval_second IS '执行间隔秒,如果不填写默认是600秒(十分钟执行一次)';
 COMMENT ON COLUMN retry_task.delay_second IS '初次创建任务延迟时间，默认是100秒后执行';
 COMMENT ON COLUMN retry_task.max_execute_time IS '任务最大执行时间';

@@ -41,7 +41,7 @@ CREATE TABLE `retry_task` (
   `task_code` varchar(128) DEFAULT NULL COMMENT '需要执行的任务编码',
   `parameters` text COMMENT '参数数据',
   `attribute` text COMMENT '属性',
-  `status` tinyint NOT NULL COMMENT '最终执行状态 0:待执行,1:执行中,-1:执行失败,2:执行成功',
+  `status` tinyint NOT NULL COMMENT '最终执行状态 0:待执行,1:执行中,3:执行失败,2:执行成功',
   `interval_second` int DEFAULT NULL COMMENT '执行间隔秒,如果不填写默认是600秒(十分钟执行一次)',
   `delay_second` int DEFAULT NULL COMMENT '初次创建任务延迟时间，默认是100秒后执行',
   `max_execute_time` int DEFAULT NULL COMMENT '任务最大执行时间',

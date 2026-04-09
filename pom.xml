@@ -6,7 +6,7 @@
 
     <groupId>com.smart.retry</groupId>
     <artifactId>smart-retry</artifactId>
-    <version>${version}</version>
+    <version>${smart.retry.version}</version>
     <packaging>pom</packaging>
     <modules>
         <module>smart-retry-common</module>
@@ -16,17 +16,18 @@
         <module>smart-retry-extensions/smart-retry-mybatis</module>
         <module>smart-retry-starters/smart-retry-mybatis-start</module>
         <module>smart-retry-test</module>
+        <module>smart-retry-web</module>
     </modules>
 
     <properties>
+        <smart.retry.version>1.0.1</smart.retry.version>
         <maven.compiler.target>17</maven.compiler.target>
         <maven.compiler.source>17</maven.compiler.source>
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <version>1.0.1</version>
-        <slf4j.version>1.7.30</slf4j.version>
-        <lombok.version>1.18.18</lombok.version>
+        <slf4j.version>2.0.9</slf4j.version>
+        <lombok.version>1.18.34</lombok.version>
         <guava.version>16.0</guava.version>
         <fastjson.version>1.2.73</fastjson.version>
         <maven-source-plugin.version>2.2.1</maven-source-plugin.version>
@@ -103,28 +104,28 @@
             <dependency>
                 <groupId>com.smart.retry</groupId>
                 <artifactId>smart-retry-core</artifactId>
-                <version>${version}</version>
+                <version>${smart.retry.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>com.smart.retry</groupId>
                 <artifactId>smart-retry-common</artifactId>
-                <version>${version}</version>
+                <version>${smart.retry.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.smart.retry</groupId>
                 <artifactId>smart-retry-mybatis</artifactId>
-                <version>${version}</version>
+                <version>${smart.retry.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.smart.retry</groupId>
                 <artifactId>smart-retry-starters</artifactId>
-                <version>${version}</version>
+                <version>${smart.retry.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.smart.retry</groupId>
                 <artifactId>smart-retry-extensions</artifactId>
-                <version>${version}</version>
+                <version>${smart.retry.version}</version>
             </dependency>
 
             <dependency>
@@ -164,27 +165,19 @@
             <dependency>
                 <groupId>org.mybatis</groupId>
                 <artifactId>mybatis</artifactId>
-                <version>3.5.6</version>
+                <version>3.5.13</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.mybatis.spring.boot</groupId>
                 <artifactId>mybatis-spring-boot-starter</artifactId>
                 <version>${mybatis-spring-boot-starter.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-context</artifactId>
-                <version>6.1.14</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-autoconfigure</artifactId>
-                <version>${spring.boot.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-tx</artifactId>
-                <version>6.1.14</version>
             </dependency>
 
         </dependencies>

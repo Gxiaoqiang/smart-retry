@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.smart.retry.web.dao.RetryShardingDao">
+
+	<resultMap id="RetryShardingMap" type="com.smart.retry.web.entity.RetryShardingDO">
+		<result column="id" property="id"/>
+		<result column="gmt_create" property="gmtCreate"/>
+		<result column="creator_id" property="creatorId"/>
+		<result column="instance_id" property="instanceId"/>
+		<result column="status" property="status"/>
+		<result column="last_heartbeat" property="lastHeartbeat"/>
+	</resultMap>
+
+	<sql id="all_column">
+		id,
+		gmt_create,
+		creator_id,
+		instance_id,
+		status,
+		last_heartbeat
+	</sql>
+
+	<!-- 查询所有分片数据（分页） -->
+	<select id="selectAllWithPage" resultMap="RetryShardingMap">
+		SELECT <include refid="all_column"/>
+		FROM retry_sharding
+		<where>
+			<if test="creatorId != null and creatorId != ''">
+				AND creator_id LIKE CONCAT('%', #{creatorId}, '%')
+			</if>
+			<if test="instanceId != null and instanceId != ''">
+				AND instance_id LIKE CONCAT('%', #{instanceId}, '%')
+			</if>
+		</where>
+		ORDER BY id DESC
+		LIMIT #{limit} OFFSET #{offset}
+	</select>
+
+	<!-- 统计分片总数 -->
+	<select id="countAll" resultType="java.lang.Long">
+		SELECT COUNT(*)
+		FROM retry_sharding
+		<where>
+			<if test="creatorId != null and creatorId != ''">
+				AND creator_id LIKE CONCAT('%', #{creatorId}, '%')
+			</if>
+			<if test="instanceId != null and instanceId != ''">
+				AND instance_id LIKE CONCAT('%', #{instanceId}, '%')
+			</if>
+		</where>
+	</select>
+
+	<!-- 更新实例ID -->
+	<update id="updateInstanceId">
+		UPDATE retry_sharding
+		SET instance_id = #{instanceId}
+		WHERE id = #{id}
+	</update>
+
+	<!-- 根据ID查询分片 -->
+	<select id="selectById" parameterType="java.lang.Long" resultMap="RetryShardingMap">
+		SELECT <include refid="all_column"/>
+		FROM retry_sharding
+		WHERE id = #{id}
+	</select>
+
+	<!-- 统计活跃实例数量 -->
+	<select id="countActiveInstances" resultType="java.lang.Integer">
+		SELECT COUNT(DISTINCT instance_id)
+		FROM retry_sharding
+		WHERE last_heartbeat > (NOW() - INTERVAL #{timeoutSeconds} SECOND)
+		AND instance_id IS NOT NULL
+		AND instance_id != ''
+	</select>
+
+	<!-- 获取分片分布情况 -->
+	<select id="getShardingDistribution" resultType="java.util.HashMap">
+		SELECT instance_id AS instanceId, COUNT(*) AS count
+		FROM retry_sharding
+		WHERE instance_id IS NOT NULL AND instance_id != ''
+		GROUP BY instance_id
+	</select>
+
+	<!-- 获取实例心跳信息 -->
+	<select id="getInstanceHeartbeats" resultType="java.util.HashMap">
+		SELECT instance_id AS instanceId, 
+		       last_heartbeat AS lastHeartbeat,
+		       TIMESTAMPDIFF(SECOND, last_heartbeat, NOW()) AS heartbeatDelay
+		FROM retry_sharding
+		WHERE instance_id IS NOT NULL AND instance_id != ''
+		ORDER BY last_heartbeat DESC
+	</select>
+
+	<!-- 删除实例 -->
+	<delete id="deleteById" parameterType="java.lang.Long">
+		DELETE FROM retry_sharding WHERE id = #{id}
+	</delete>
+
+</mapper>

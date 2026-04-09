@@ -1,0 +1,43 @@
+server:
+  port: 8076
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: smart-retry-web
+
+  # 数据源配置（默认MySQL，可根据需要切换）
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://10.212.16.1:3306/npshas_relay_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: npshas_user
+    password: ASDFasdf123@
+    
+    # PostgreSQL配置示例
+    # driver-class-name: org.postgresql.Driver
+    # url: jdbc:postgresql://localhost:5432/smart_retry
+    # username: postgres
+    # password: postgres
+    
+    # Oracle配置示例
+    # driver-class-name: oracle.jdbc.OracleDriver
+    # url: jdbc:oracle:thin:@localhost:1521:orcl
+    # username: smart_retry
+    # password: smart_retry
+
+# MyBatis配置
+mybatis:
+  mapper-locations: classpath*:mapper/mysql/*.xml
+  type-aliases-package: com.smart.retry.web.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 日志配置
+logging:
+  level:
+    com.smart.retry: INFO
+    com.smart.retry.mybatis.dao: DEBUG
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n'
