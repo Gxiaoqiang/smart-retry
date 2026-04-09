@@ -5,6 +5,9 @@
     <!-- 搜索区域 -->
     <el-card style="margin-top: 20px;">
       <el-form :inline="true" :model="queryForm">
+        <el-form-item label="任务ID">
+          <el-input v-model.number="queryForm.id" placeholder="请输入任务ID" clearable style="width: 120px;" />
+        </el-form-item>
         <el-form-item label="任务编码">
           <el-input v-model="queryForm.taskCode" placeholder="请输入任务编码" clearable />
         </el-form-item>
@@ -104,8 +107,8 @@
         <el-form-item label="执行间隔(秒)" prop="intervalSecond" v-if="isCreate">
           <el-input-number v-model="form.intervalSecond" :min="0" />
         </el-form-item>
-        <el-form-item label="执行实例" prop="shardingKey" v-if="isCreate">
-          <el-select v-model="form.shardingKey" placeholder="请选择执行实例">
+        <el-form-item label="执行实例" prop="shardingKey">
+          <el-select v-model="form.shardingKey" placeholder="请选择执行实例" style="width: 100%;">
             <el-option
               v-for="item in shardingOptions"
               :key="item.shardingKey"
@@ -225,6 +228,7 @@ const shardingOptions = ref([])
 const queryForm = reactive({
   pageNum: 1,
   pageSize: 10,
+  id: null,
   taskCode: '',
   taskDesc: '',
   status: null
@@ -341,6 +345,7 @@ const handleQuery = async () => {
 
 // 重置
 const handleReset = () => {
+  queryForm.id = null
   queryForm.taskCode = ''
   queryForm.taskDesc = ''
   queryForm.status = null
@@ -364,7 +369,11 @@ const handleEdit = (row) => {
   form.param = row.parameters || '{}'
   form.nextPlanTime = row.nextPlanTime
   form.status = row.status
+  form.shardingKey = row.shardingKey
   dialogVisible.value = true
+  
+  // 加载分片选项
+  loadShardingOptions()
 }
 
 // 查看
