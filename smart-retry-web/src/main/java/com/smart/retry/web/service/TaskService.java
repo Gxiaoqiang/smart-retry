@@ -169,8 +169,6 @@ public class TaskService {
                     && !RetryTaskStatus.SUCCESS.getCode().equals(currentStatus)) {
                     throw new RuntimeException("只有失败或成功的任务才能重置为待执行");
                 }
-                // 重置重试次数
-                taskDO.setRetryNum(taskDO.getOriginRetryNum());
             }
             
             taskDO.setStatus(newStatus);
