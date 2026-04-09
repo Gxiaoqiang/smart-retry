@@ -29,7 +29,7 @@
         id, gmt_create, gmt_modified, task_desc, task_code, attribute, parameters,
         status, delay_second, interval_second, next_plan_time, origin_retry_num,
         next_plan_time_strategy, retry_num, creator, executor,
-        current_log_id, unique_key
+        current_log_id, unique_key,sharding_key
     </sql>
     
     <sql id="baseSelectSql">

@@ -79,7 +79,7 @@ public class TaskService {
             if (sharding != null && sharding.getInstanceId() != null) {
                 vo.setShardingInfo(sharding.getInstanceId() + "(" + sharding.getId() + ")");
             } else {
-                vo.setShardingInfo("-");
+                vo.setShardingInfo(taskDO.getShardingKey()+"");
             }
             
             voList.add(vo);

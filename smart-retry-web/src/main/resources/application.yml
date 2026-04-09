@@ -10,9 +10,9 @@ spring:
   # 数据源配置（默认MySQL，可根据需要切换）
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://10.212.16.1:3306/npshas_relay_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: npshas_user
-    password: ASDFasdf123@
+    url: jdbc:mysql://localhost:3306/retry_task?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456789
     
     # PostgreSQL配置示例
     # driver-class-name: org.postgresql.Driver

@@ -32,5 +32,8 @@ public class TaskCreateRequest extends PageRequest {
     @NotNull(message = "shardingKey不能为空")
     private Long shardingKey;
     
-    private Integer nextPlanTimeStrategy = 0;
+    /**
+     * 下次执行时间策略：1-固定间隔 2-递增 3-斐波那契 4-退避
+     */
+    private Integer nextPlanTimeStrategy = 1;
 }

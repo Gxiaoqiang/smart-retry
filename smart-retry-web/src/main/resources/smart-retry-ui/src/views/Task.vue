@@ -107,6 +107,14 @@
         <el-form-item label="执行间隔(秒)" prop="intervalSecond" v-if="isCreate">
           <el-input-number v-model="form.intervalSecond" :min="0" />
         </el-form-item>
+        <el-form-item label="执行策略" prop="nextPlanTimeStrategy" v-if="isCreate">
+          <el-select v-model="form.nextPlanTimeStrategy" placeholder="请选择执行策略" style="width: 100%;">
+            <el-option label="固定间隔" :value="1" />
+            <el-option label="递增" :value="2" />
+            <el-option label="斐波那契" :value="3" />
+            <el-option label="退避" :value="4" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="执行实例" prop="shardingKey">
           <el-select v-model="form.shardingKey" placeholder="请选择执行实例" style="width: 100%;">
             <el-option
@@ -241,6 +249,7 @@ const form = reactive({
   retryNum: 1,
   delaySecond: 100,
   intervalSecond: 600,
+  nextPlanTimeStrategy: 1, // 默认固定间隔
   param: '{}',
   shardingKey: null,
   nextPlanTime: null,
@@ -517,6 +526,7 @@ const resetForm = () => {
   form.retryNum = 1
   form.delaySecond = 100
   form.intervalSecond = 600
+  form.nextPlanTimeStrategy = 1
   form.param = '{}'
   form.shardingKey = null
   form.nextPlanTime = null
