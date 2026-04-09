@@ -101,8 +101,8 @@ public class InstanceService {
         log.info("[InstanceService#deleteInstance]实例任务校验通过，id: {}, instanceId: {}", id, shardingDO.getInstanceId());
             
         // 删除该实例下的所有任务
-        retryTaskDao.deleteByShardingKey(shardingDO.getId());
-        log.info("[InstanceService#deleteInstance]删除实例下的所有任务成功，id: {}, instanceId: {}", id, shardingDO.getInstanceId());
+        //retryTaskDao.deleteByShardingKey(shardingDO.getId());
+        //log.info("[InstanceService#deleteInstance]删除实例下的所有任务成功，id: {}, instanceId: {}", id, shardingDO.getInstanceId());
             
         // 删除实例
         int result = retryShardingDao.deleteById(id);
