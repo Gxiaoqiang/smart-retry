@@ -36,8 +36,5 @@ mybatis:
 
 # 日志配置
 logging:
-  level:
-    com.smart.retry: INFO
-    com.smart.retry.mybatis.dao: DEBUG
-  pattern:
-    console: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n'
+  config: classpath:logback-spring.xml
+  file: smart-retry
