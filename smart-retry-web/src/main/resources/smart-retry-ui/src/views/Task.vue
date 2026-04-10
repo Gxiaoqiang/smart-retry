@@ -376,9 +376,18 @@ const handleEdit = (row) => {
   form.id = row.id
   form.retryNum = row.retryNum
   form.param = row.parameters || '{}'
-  form.nextPlanTime = row.nextPlanTime
   form.status = row.status
   form.shardingKey = row.shardingKey
+  
+  // 处理下次执行时间，确保格式正确
+  if (row.nextPlanTime) {
+    // 如果是时间戳，转换为 ISO 格式
+    const date = new Date(row.nextPlanTime)
+    form.nextPlanTime = date.toISOString().slice(0, 19)
+  } else {
+    form.nextPlanTime = null
+  }
+  
   dialogVisible.value = true
   
   // 加载分片选项
