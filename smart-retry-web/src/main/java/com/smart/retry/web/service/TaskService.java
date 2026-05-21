@@ -45,6 +45,8 @@ public class TaskService {
         query.setStatus(request.getStatus());
         query.setShardingKeyList(request.getShardingKey() != null ? 
                 Collections.singletonList(request.getShardingKey()) : null);
+        query.setMinGmtCreate(request.getGmtCreateStart());
+        query.setMaxGmtCreate(request.getGmtCreateEnd());
         
         // 查询总数
         int total = retryTaskDao.countByQuery(query);

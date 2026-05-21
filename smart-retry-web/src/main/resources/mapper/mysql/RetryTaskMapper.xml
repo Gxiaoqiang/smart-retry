@@ -50,6 +50,8 @@
                 <if test="maxNextPlanTime!=null">AND next_plan_time &lt;= #{maxNextPlanTime}</if>
                 <if test="creator!=null">AND creator = #{creator}</if>
                 <if test="uniqueKey!=null">AND unique_key = #{uniqueKey}</if>
+                <if test="minGmtCreate!=null">AND gmt_create &gt;= #{minGmtCreate}</if>
+                <if test="maxGmtCreate!=null">AND gmt_create &lt;= #{maxGmtCreate}</if>
             </trim>
         </where>
 

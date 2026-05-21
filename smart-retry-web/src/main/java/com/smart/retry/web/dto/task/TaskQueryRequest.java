@@ -4,6 +4,8 @@ import com.smart.retry.web.dto.PageRequest;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.Date;
+
 /**
  * 任务查询请求
  */
@@ -22,4 +24,10 @@ public class TaskQueryRequest extends PageRequest {
     private Long shardingKey;
     
     private String creator;
+    
+    /**
+     * 创建时间范围
+     */
+    private Date gmtCreateStart;
+    private Date gmtCreateEnd;
 }

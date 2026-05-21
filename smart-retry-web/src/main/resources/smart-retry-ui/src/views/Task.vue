@@ -22,6 +22,18 @@
             <el-option label="失败" :value="3" />
           </el-select>
         </el-form-item>
+        <el-form-item label="创建时间">
+          <el-date-picker
+            v-model="createTimeRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width: 360px;"
+          />
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
@@ -131,7 +143,7 @@
             type="datetime"
             placeholder="选择日期时间"
             format="YYYY-MM-DD HH:mm:ss"
-            value-format="YYYY-MM-DDTHH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
         <el-form-item label="任务状态" prop="status" v-if="!isCreate">
@@ -232,6 +244,7 @@ const isCreate = ref(true)
 const formRef = ref(null)
 const selectedIds = ref([])
 const shardingOptions = ref([])
+const createTimeRange = ref(null)
 
 const queryForm = reactive({
   pageNum: 1,
@@ -342,7 +355,13 @@ const getStatusText = (status) => {
 const handleQuery = async () => {
   loading.value = true
   try {
-    const result = await queryTasks(queryForm)
+    // 构建查询参数
+    const params = {
+      ...queryForm,
+      gmtCreateStart: createTimeRange.value ? createTimeRange.value[0] : null,
+      gmtCreateEnd: createTimeRange.value ? createTimeRange.value[1] : null
+    }
+    const result = await queryTasks(params)
     tableData.value = result.list
     total.value = result.total
   } catch (error) {
@@ -359,6 +378,7 @@ const handleReset = () => {
   queryForm.taskDesc = ''
   queryForm.status = null
   queryForm.pageNum = 1
+  createTimeRange.value = null
   handleQuery()
 }
 
@@ -381,9 +401,15 @@ const handleEdit = (row) => {
   
   // 处理下次执行时间，确保格式正确
   if (row.nextPlanTime) {
-    // 如果是时间戳，转换为 ISO 格式
+    // 如果是时间戳，转换为本地时间字符串
     const date = new Date(row.nextPlanTime)
-    form.nextPlanTime = date.toISOString().slice(0, 19)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const seconds = String(date.getSeconds()).padStart(2, '0')
+    form.nextPlanTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
   } else {
     form.nextPlanTime = null
   }

@@ -6,6 +6,11 @@ server:
 spring:
   application:
     name: smart-retry-web
+  
+  # Jackson时间序列化配置
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
 
   # 数据源配置（默认MySQL，可根据需要切换）
   datasource:

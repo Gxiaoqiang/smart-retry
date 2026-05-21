@@ -192,7 +192,7 @@
         from retry_task
         WHERE
         <include refid="baseSelectSql"/>
-        order by id desc
+        order by id
         <!-- Oracle 12c+ 分页语法 -->
         OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
     </select>

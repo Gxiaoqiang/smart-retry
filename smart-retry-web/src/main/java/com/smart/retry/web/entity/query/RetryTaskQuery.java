@@ -29,6 +29,10 @@ public class RetryTaskQuery {
     private String uniqueKey;
     private String executor;
     
+    // 创建时间范围
+    private Date minGmtCreate;
+    private Date maxGmtCreate;
+    
     // 分页参数
     private int offset;
     private int limit;
@@ -191,6 +195,22 @@ public class RetryTaskQuery {
 
     public void setExecutor(String executor) {
         this.executor = executor;
+    }
+
+    public Date getMinGmtCreate() {
+        return minGmtCreate;
+    }
+
+    public void setMinGmtCreate(Date minGmtCreate) {
+        this.minGmtCreate = minGmtCreate;
+    }
+
+    public Date getMaxGmtCreate() {
+        return maxGmtCreate;
+    }
+
+    public void setMaxGmtCreate(Date maxGmtCreate) {
+        this.maxGmtCreate = maxGmtCreate;
     }
 
     public int getOffset() {

@@ -148,7 +148,7 @@
         from retry_task
         WHERE
         <include refid="baseSelectSql"/>
-        order by id desc
+        order by id
         LIMIT #{limit} offset #{offset}
     </select>
     <select id="countByQuery" parameterType="com.smart.retry.mybatis.entity.query.RetryTaskQuery"
