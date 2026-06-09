@@ -161,7 +161,9 @@ public class SimpleContainer implements RetryContainer {
         public void run() {
             try {
                 int deleteCount = retryConfiguration.getRetryTaskAcess().deleteHistoryRetryTask(smartConfigure.getClearTask().getBeforeDays(), smartConfigure.getClearTask().getLimitRows());
-                LOGGER.info("[ClearTask#run] delete expired retry task count {},expire days {},limit rows {} ", deleteCount, smartConfigure.getClearTask().getBeforeDays(), smartConfigure.getClearTask().getLimitRows());
+                if (smartConfigure.shouldLogInfo()) {
+                    LOGGER.info("[ClearTask#run] delete expired retry task count {},expire days {},limit rows {} ", deleteCount, smartConfigure.getClearTask().getBeforeDays(), smartConfigure.getClearTask().getLimitRows());
+                }
             } catch (Exception e) {
                 LOGGER.error("[ClearTask#run] error ", e);
             }
@@ -294,7 +296,9 @@ public class SimpleContainer implements RetryContainer {
     private static void doProduceTask(RetryTask retryTask, RetryConfiguration retryConfiguration) {
         //任务存在则不处理，避免重复处理
         if (checkTaskExists(retryTask)) {
-            LOGGER.warn("[SimpleContainer#doProduceTask]task exists,taskId:{}", retryTask.getId());
+            if(smartConfigure.shouldLogInfo()){
+                LOGGER.info("[SimpleContainer#doProduceTask]task exists,taskId:{}", retryTask.getId());
+            }
             return;
         }
 
@@ -319,7 +323,9 @@ public class SimpleContainer implements RetryContainer {
                            RetryConfiguration retryConfiguration) {
         //任务存在则不处理，避免重复处理
         if (checkTaskExists(retryTask)){
-            LOGGER.warn("[SimpleContainer#invokeTaskSync]task exists,taskId:{}", retryTask.getId());
+            if(smartConfigure.shouldLogInfo()){
+                LOGGER.info("[SimpleContainer#invokeTaskSync]task exists,taskId:{}", retryTask.getId());
+            }
             return;
         }
         new ConsumerTask(retryTask, retryConfiguration).run();

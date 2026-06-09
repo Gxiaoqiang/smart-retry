@@ -136,7 +136,7 @@ public class MybatisAutoConfiguration extends CommonConfiguration
         return new MybatisAccess(retryTaskRepo);
     }
     @Bean
-    public HeartbeatContainer heartbeatContainer(RetryTaskHeart retryTaskHeart) {
+    public HeartbeatContainer heartbeatContainer(RetryTaskHeart retryTaskHeart, SmartExecutorConfigure smartExecutorConfigure) {
         LOGGER.info("[MybatisAutoConfiguration#heartbeatContainer] Initializing heartbeat container");
         HeartbeatContainer heartbeatContainer = new HeartbeatContainer(retryTaskHeart);
         heartbeatContainer.start();

@@ -10,6 +10,26 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class SmartExecutorConfigure {
 
 
+    /**
+     * 是否开启日志
+     */
+    private boolean logger = false;
+
+    /**
+     * 判断是否应该打印INFO日志
+     * @return true=打印，false=不打印
+     */
+    public boolean shouldLogInfo() {
+        return logger;
+    }
+
+    public boolean isLogger() {
+        return logger;
+    }
+
+    public void setLogger(boolean logger) {
+        this.logger = logger;
+    }
 
     public static class Health {
 
