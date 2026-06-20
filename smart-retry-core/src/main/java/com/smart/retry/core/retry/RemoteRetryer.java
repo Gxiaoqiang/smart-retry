@@ -10,6 +10,7 @@ import com.smart.retry.common.retry.IRetryer;
 import com.smart.retry.common.serializer.SmartSerializer;
 import com.smart.retry.common.utils.IpUtils;
 import com.smart.retry.core.ShardingContextHolder;
+import com.smart.retry.core.SimpleContainer;
 import org.aopalliance.intercept.MethodInvocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,6 +84,8 @@ public class RemoteRetryer implements IRetryer {
 
         retryConfiguration.getRetryTaskAcess().saveRetryTask(retryTask);
 
+        // 将任务加入 DelayQueue 精准调度（窗口内才入队）
+        SimpleContainer.enqueueIfInWindow(retryTask);
 
     }
 

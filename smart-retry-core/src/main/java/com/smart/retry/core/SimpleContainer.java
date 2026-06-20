@@ -186,13 +186,30 @@ public class SimpleContainer implements RetryContainer {
      * @param task 重试任务
      * @return true=入队成功，false=已在内存中
      */
-    static boolean enqueue(RetryTask task) {
+    public static boolean enqueue(RetryTask task) {
         String key = getUniqueKey(task);
         if (!inMemoryTaskKeys.add(key)) {
             return false;
         }
         delayQueue.put(new ScheduledTask(task));
         return true;
+    }
+
+    /**
+     * 静态方法：任务写入 DB 后调用，窗口内则入队
+     * 供 RemoteRetryer 和 SimpleRetryTaskOperator 使用
+     *
+     * @param task 重试任务
+     */
+    public static void enqueueIfInWindow(RetryTask task) {
+        if (task == null || task.getNextPlanTime() == null) {
+            return;
+        }
+        long nextPlanTime = task.getNextPlanTime().getTime();
+        long windowEnd = System.currentTimeMillis() + preloadWindowMs;
+        if (nextPlanTime <= windowEnd) {
+            enqueue(task);
+        }
     }
 
     /**
