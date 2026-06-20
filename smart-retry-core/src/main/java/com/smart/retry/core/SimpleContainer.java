@@ -375,74 +375,71 @@ public class SimpleContainer implements RetryContainer {
         }
     }
 
+    /**
+     * 兜底扫描线程：低频扫描 DB，将遗漏任务加入 DelayQueue
+     * 不再直接提交任务到 executor
+     */
     class ProducerTask implements Runnable {
-        private long SLEEP_BASE_TIME_MILLISECONDS = smartConfigure.getTaskFindInterval() * 1000;
-        private long MAX_SLEEP_TIME_MILLISECONDS = 20 * SLEEP_BASE_TIME_MILLISECONDS;
+        private long sleepBaseTimeMilliseconds;
 
-        private long sleepTimes = 0L;
-
-
-        private void sleep() {
-            try {
-                long totalTime =
-                        sleepTimes * SLEEP_BASE_TIME_MILLISECONDS + SLEEP_BASE_TIME_MILLISECONDS;
-                long sleepTime = Math.min(totalTime, MAX_SLEEP_TIME_MILLISECONDS);
-                TimeUnit.MILLISECONDS.sleep(sleepTime);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-
+        ProducerTask() {
+            this.sleepBaseTimeMilliseconds = smartConfigure.getTaskFindInterval() * 1000L;
         }
 
         @Override
         public void run() {
-            loop1:
             while (SmartRetryExit.isExit()) {
 
                 if (!SmartRetryRunFlag.getFlag()) {
+                    sleepOneInterval();
                     continue;
                 }
 
                 try {
-                    List<RetryTask> allRetryTask = retryConfiguration.getRetryTaskAcess().listRetryTask();
+                    int currentSize = inMemoryTaskKeys.size();
+                    int availableSlots = smartConfigure.getMaxInMemory() - currentSize;
+                    if (availableSlots <= 0) {
+                        LOGGER.warn("[ProducerTask] 内存任务数达到上限 {}, 跳过本轮扫描",
+                            smartConfigure.getMaxInMemory());
+                        sleepOneInterval();
+                        continue;
+                    }
 
-                    //如果当前任务为空则，sleepTimes = 0 ,睡眠一段时间后，进入下个阶段
+                    Date maxNextPlanTime = new Date(
+                        System.currentTimeMillis() + preloadWindowMs);
+                    List<RetryTask> allRetryTask = retryConfiguration
+                        .getRetryTaskAcess()
+                        .listRetryTask(maxNextPlanTime, Math.min(availableSlots, 500));
+
                     if (CollectionUtils.isEmpty(allRetryTask)) {
-                        sleepTimes = 0;
-                        sleep();
-                        continue loop1;
+                        sleepOneInterval();
+                        continue;
                     }
 
-                    //如果当前队列中积累的任务大于等于最大任务数，则线程睡眠，睡眠一定时间后重新拉取
-                    if (consumerQueue.size() >= MAX_QUEUE_SIZE) {
-                        sleepTimes++;
-                        sleep();
-                        continue loop1;
-                    }
-                    //如果当前队列中积累的任务+allRetryTask.size() 大于等于最大任务数，则线程睡眠，睡眠一定时间后重新拉取
-                    if (consumerQueue.size() + allRetryTask.size() >= MAX_QUEUE_SIZE) {
-                        sleepTimes++;
-                        sleep();
-                        continue loop1;
-                    } else {
-                        sleepTimes = 0L;
+                    int enqueued = 0;
+                    for (RetryTask retryTask : allRetryTask) {
+                        if (enqueue(retryTask)) {
+                            enqueued++;
+                        }
                     }
 
-                    produceTask(allRetryTask);
-                    sleep();
+                    if (smartConfigure.shouldLogInfo() && enqueued > 0) {
+                        LOGGER.info("[ProducerTask] 兜底扫描加载 {} 个任务到 DelayQueue, 内存中任务数: {}",
+                            enqueued, inMemoryTaskKeys.size());
+                    }
 
+                    sleepOneInterval();
                 } catch (Exception e) {
-                    LOGGER.error("[ProducerTask-run,error ", e);
+                    LOGGER.error("[ProducerTask] error", e);
                 }
             }
         }
 
-        private void produceTask(List<RetryTask> allRetryTask) {
-            for (RetryTask retryTask : allRetryTask) {
-                doProduceTask(retryTask, retryConfiguration);
-
-
-                //consumerExecutor.execute(new ConsumerTask(retryTask, retryConfiguration));
+        private void sleepOneInterval() {
+            try {
+                TimeUnit.MILLISECONDS.sleep(sleepBaseTimeMilliseconds);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
     }
