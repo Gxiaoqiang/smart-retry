@@ -116,6 +116,23 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
     }
 
     @Override
+    public List<RetryTaskDO> listAllWaitingRetryTask(Date maxNextPlanTime, int limit) {
+        RetryTaskQuery query = new RetryTaskQuery();
+        //如果获取不到分区，则返回空列表，不执行任何重试任务
+        List<Long> shardingKeyList = ShardingContextHolder.shardingIndex();
+        if (CollectionUtils.isEmpty(shardingKeyList)) {
+            return Lists.newArrayList();
+        }
+        query.setShardingKeyList(shardingKeyList);
+        query.setStatusList(Lists.newArrayList(RetryTaskStatus.WAITING.getCode(), RetryTaskStatus.FAIL.getCode()));
+        query.setMinRetryNum(1);
+        query.setMaxNextPlanTime(maxNextPlanTime != null ? maxNextPlanTime : new Date());
+        query.setOffset(0);
+        query.setLimit(limit);
+        return retryTaskDao.selectByQuery(query);
+    }
+
+    @Override
     public int deleteByGmtCreate(Date gmtCreate, int limitRows) {
         int deleteCount = 0;
         while (true) {

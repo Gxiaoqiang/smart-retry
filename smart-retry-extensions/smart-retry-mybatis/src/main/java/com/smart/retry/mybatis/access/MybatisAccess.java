@@ -77,6 +77,21 @@ public class MybatisAccess implements RetryTaskAccess {
     }
 
     @Override
+    public List<RetryTask> listRetryTask(Date maxNextPlanTime, int limit) {
+        List<RetryTaskDO> retryTaskDOS = retryTaskRepo.listAllWaitingRetryTask(maxNextPlanTime, limit);
+        if (CollectionUtils.isEmpty(retryTaskDOS)) {
+            return Collections.emptyList();
+        }
+        List<RetryTask> retryTasks = new ArrayList<>(retryTaskDOS.size());
+        for (RetryTaskDO retryTask : retryTaskDOS) {
+            RetryTask retryTaskDo = new RetryTask();
+            BeanUtils.copyProperties(retryTask, retryTaskDo);
+            retryTasks.add(retryTaskDo);
+        }
+        return retryTasks;
+    }
+
+    @Override
     public long saveRetryTask(RetryTask retryTask) {
         RetryTaskDO retryTaskDO = new RetryTaskDO();
         BeanUtils.copyProperties(retryTask, retryTaskDO);

@@ -23,6 +23,7 @@ public interface RetryTaskRepo {
 
     List<RetryTaskDO> listAllWaitingRetryTask();
 
+    List<RetryTaskDO> listAllWaitingRetryTask(Date maxNextPlanTime, int limit);
 
     List<RetryTaskDO> listAllDeadTask(Date deadTaskTime);
 
