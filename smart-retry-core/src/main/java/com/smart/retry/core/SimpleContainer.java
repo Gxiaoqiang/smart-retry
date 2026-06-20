@@ -64,6 +64,9 @@ public class SimpleContainer implements RetryContainer {
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (schedulerThread != null) {
+                schedulerThread.interrupt();
+            }
             if (consumerExecutor != null) {
                 consumerExecutor.shutdown();
             }
@@ -78,8 +81,17 @@ public class SimpleContainer implements RetryContainer {
     public void start() {
         initTaskExecutor(smartConfigure);
 
-        Thread producerTask = new Thread(new ProducerTask());
+        // 初始化预加载窗口
+        this.preloadWindowMs = (long) smartConfigure.getTaskFindInterval()
+            * smartConfigure.getScanPreloadMultiplier() * 1000L;
+
+        // Producer 兜底扫描线程（低频，仅加载到 DelayQueue）
+        Thread producerTask = new Thread(new ProducerTask(), "smart-retry-producer");
         producerTask.start();
+
+        // SchedulerThread 调度线程（从 DelayQueue 消费，精准触发）
+        schedulerThread = new Thread(new SchedulerThread(), "smart-retry-scheduler");
+        schedulerThread.start();
 
         if (smartConfigure.getDeadTask().getDeadTaskCheck()) {
             Thread deadLetterTask = new Thread(new DeadLetterTask());
@@ -87,12 +99,10 @@ public class SimpleContainer implements RetryContainer {
             deadLetterTask.start();
         }
 
-
         if (smartConfigure.getClearTask().getEnabled()) {
             initTaskScheduler();
             CronTrigger trigger = new CronTrigger(smartConfigure.getClearTask().getCron());
             taskScheduler.schedule(new ClearTask(), trigger);
-
         }
     }
 
