@@ -23,6 +23,14 @@ public interface RetryTaskAccess {
      */
     List<RetryTask> listRetryTask();
 
+    /**
+     * 获取待重试任务（支持预加载窗口和数量限制）
+     * @param maxNextPlanTime 最大下次执行时间，null 则默认 now()
+     * @param limit 每次拉取的最大数量
+     * @return 待重试任务列表
+     */
+    List<RetryTask> listRetryTask(java.util.Date maxNextPlanTime, int limit);
+
 
     RetryTask getRetryTask(long taskId);
 
