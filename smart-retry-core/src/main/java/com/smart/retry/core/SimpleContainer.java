@@ -29,22 +29,19 @@ public class SimpleContainer implements RetryContainer {
 
     private static final Logger LOGGER = org.slf4j.LoggerFactory.getLogger(SimpleContainer.class);
 
-
-    private static final Integer MAX_QUEUE_SIZE = 3000;
-
     // ========== DelayQueue 精准调度相关字段 ==========
 
     /** 内存精准调度队列 */
-    private final DelayQueue<ScheduledTask> delayQueue = new DelayQueue<>();
+    private static final DelayQueue<ScheduledTask> delayQueue = new DelayQueue<>();
 
     /** 内存中去重集合，key = taskCode + "-" + uniqueKey */
-    private final Set<String> inMemoryTaskKeys = ConcurrentHashMap.newKeySet();
+    private static final Set<String> inMemoryTaskKeys = ConcurrentHashMap.newKeySet();
 
     /** 调度线程 */
-    private Thread schedulerThread;
+    private static Thread schedulerThread;
 
     /** 预加载窗口毫秒数 */
-    private long preloadWindowMs;
+    private static long preloadWindowMs;
 
     private static RetryConfiguration retryConfiguration;
 
@@ -82,7 +79,7 @@ public class SimpleContainer implements RetryContainer {
         initTaskExecutor(smartConfigure);
 
         // 初始化预加载窗口
-        this.preloadWindowMs = (long) smartConfigure.getTaskFindInterval()
+        preloadWindowMs = (long) smartConfigure.getTaskFindInterval()
             * smartConfigure.getScanPreloadMultiplier() * 1000L;
 
         // Producer 兜底扫描线程（低频，仅加载到 DelayQueue）
@@ -189,7 +186,7 @@ public class SimpleContainer implements RetryContainer {
      * @param task 重试任务
      * @return true=入队成功，false=已在内存中
      */
-    boolean enqueue(RetryTask task) {
+    static boolean enqueue(RetryTask task) {
         String key = getUniqueKey(task);
         if (!inMemoryTaskKeys.add(key)) {
             return false;
@@ -204,7 +201,7 @@ public class SimpleContainer implements RetryContainer {
      *
      * @param task 已执行完毕的任务
      */
-    void afterExecute(RetryTask task) {
+    static void afterExecute(RetryTask task) {
         String key = getUniqueKey(task);
         inMemoryTaskKeys.remove(key);
 
@@ -236,7 +233,7 @@ public class SimpleContainer implements RetryContainer {
      * @param task 待执行任务
      * @return true=可以执行，false=跳过该任务
      */
-    private boolean validateTaskInDB(RetryTask task) {
+    private static boolean validateTaskInDB(RetryTask task) {
         try {
             RetryTask dbTask = retryConfiguration.getRetryTaskAcess().getRetryTask(task.getId());
             if (dbTask == null) {
