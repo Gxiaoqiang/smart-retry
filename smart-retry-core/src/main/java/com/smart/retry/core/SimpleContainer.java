@@ -303,6 +303,7 @@ public class SimpleContainer implements RetryContainer {
                 LOGGER.error("[ConsumerTask-run error,retryTask:{} ", GsonTool.toJsonString(retryTask), e);
             } finally {
                 RetryTaskCache.removeTaskFlag(uniqueKey);
+                afterExecute(retryTask);
             }
 
         }
