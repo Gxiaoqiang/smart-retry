@@ -211,6 +211,17 @@ public class SmartExecutorConfigure {
      */
     private int taskFindInterval = 20;
 
+    /**
+     * 预加载倍数，preloadWindow = taskFindInterval * scanPreloadMultiplier
+     * 默认 2，即预加载窗口 = 20s × 2 = 40s
+     */
+    private int scanPreloadMultiplier = 2;
+
+    /**
+     * 内存中最大任务数量，达到上限后 Producer 停止加载新任务
+     */
+    private int maxInMemory = 3000;
+
     private Executor executor = new Executor();
 
     public int getTaskFindInterval() {
@@ -222,6 +233,28 @@ public class SmartExecutorConfigure {
             throw new IllegalArgumentException("taskFindInterval must be greater than 0");
         }
         this.taskFindInterval = taskFindInterval;
+    }
+
+    public int getScanPreloadMultiplier() {
+        return scanPreloadMultiplier;
+    }
+
+    public void setScanPreloadMultiplier(int scanPreloadMultiplier) {
+        if (scanPreloadMultiplier < 1) {
+            throw new IllegalArgumentException("scanPreloadMultiplier must be greater than 0");
+        }
+        this.scanPreloadMultiplier = scanPreloadMultiplier;
+    }
+
+    public int getMaxInMemory() {
+        return maxInMemory;
+    }
+
+    public void setMaxInMemory(int maxInMemory) {
+        if (maxInMemory < 100) {
+            throw new IllegalArgumentException("maxInMemory must be greater than 100");
+        }
+        this.maxInMemory = maxInMemory;
     }
 
     public Executor getExecutor() {
