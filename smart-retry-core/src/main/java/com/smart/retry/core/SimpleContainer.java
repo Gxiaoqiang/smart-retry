@@ -8,6 +8,7 @@ import com.smart.retry.common.constant.RetryTaskStatus;
 import com.smart.retry.common.innovation.SmartInnovation;
 import com.smart.retry.common.model.RetryTask;
 import com.smart.retry.common.utils.GsonTool;
+import com.smart.retry.core.cache.RetryCache;
 import com.smart.retry.core.config.SmartExecutorConfigure;
 import com.smart.retry.core.innovation.DefaultInnovation;
 import org.slf4j.Logger;
@@ -230,6 +231,12 @@ public class SimpleContainer implements RetryContainer {
             return;
         }
 
+        // 如果taskCode在RetryCache中不存在，说明无法执行，不重新入队
+        // 由Producer兜底扫描后续处理
+        if (RetryCache.get(task.getTaskCode()) == null) {
+            return;
+        }
+
         // 失败且还有重试次数
         Date nextPlanTime = task.getNextPlanTime();
         if (nextPlanTime == null) {
@@ -271,7 +278,7 @@ public class SimpleContainer implements RetryContainer {
             return true;
         } catch (Exception e) {
             LOGGER.warn("[validateTaskInDB] check failed for task:{}", task.getId(), e);
-            return true;
+            return false;
         }
     }
 
@@ -387,6 +394,11 @@ public class SimpleContainer implements RetryContainer {
                         retryTaskDo.setStatus(RetryTaskStatus.WAITING.getCode());
                         retryTaskDo.setRetryNum(retryTask.getRetryNum() + 1);
                         retryConfiguration.getRetryTaskAcess().updateRetryTask(retryTaskDo);
+
+                        // 将复活的任务加入精准调度队列
+                        retryTask.setStatus(RetryTaskStatus.WAITING.getCode());
+                        retryTask.setNextPlanTime(new Date());
+                        SimpleContainer.enqueueIfInWindow(retryTask);
 
                     }
                     //List<RetryTask> deadLetterTasks = retryTaskRepo.listDeadTask(smartConfigure.getDeadTask().getMaxExecuteTime());

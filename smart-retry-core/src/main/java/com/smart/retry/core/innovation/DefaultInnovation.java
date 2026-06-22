@@ -71,6 +71,19 @@ public class DefaultInnovation implements SmartInnovation {
         RetryTaskObject taskObject = RetryCache.get(taskCode);
         if (taskObject == null) {
             LOGGER.error("[DefaultInnovation#invoke]taskObject is null, taskCode:{}", taskCode);
+
+            // 手动更新任务状态：减少重试次数、标记失败
+            // 不调用beforeProcessTask，保留原有nextPlanTime不变
+            Integer retryNum = retryTask.getRetryNum();
+            if (retryNum != null && retryNum >= 1) {
+                retryTask.setRetryNum(retryNum - 1);
+            }
+            retryTask.setStatus(RetryTaskStatus.FAIL.getCode());
+            retryTask.setExecutor(IpUtils.getIp());
+            retryConfiguration.getRetryTaskAcess().updateRetryTask(retryTask);
+
+            ExecuteResultStatus localExecuteResultStatus = ExecuteResultStatus.FAIL;
+            // 直接更新DB状态，不走finally块（避免notify NPE）
             return null;
         }
         Method method = taskObject.getMethod();
@@ -228,6 +241,9 @@ public class DefaultInnovation implements SmartInnovation {
     }*/
 
     private void notify(RetryTaskObject taskObject, String taskCode, NotifyContext notifyContext, ExecuteResultStatus executeResultStatus, Throwable throwable) {
+        if (taskObject == null) {
+            return;
+        }
         Class<? extends RetryTaskNotify>[] clazzs = taskObject.getRetryTaskNotify();
         if (ArrayUtils.isEmpty(clazzs)) {
             return;
