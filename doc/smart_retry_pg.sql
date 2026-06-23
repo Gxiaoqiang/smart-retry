@@ -21,11 +21,11 @@
 -- 1. 创建表
 CREATE TABLE retry_sharding (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    gmt_create TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    gmt_create TIMESTAMP(3) WITHOUT TIME ZONE NOT NULL,
     status SMALLINT NOT NULL,
     creator_id VARCHAR(128),
     instance_id VARCHAR(128),
-    last_heartbeat TIMESTAMP WITHOUT TIME ZONE DEFAULT NULL
+    last_heartbeat TIMESTAMP(3) WITHOUT TIME ZONE DEFAULT NULL
 );
 
 -- 2. 添加表注释
@@ -50,8 +50,8 @@ CREATE INDEX idx_last_heartbeat ON retry_sharding (last_heartbeat);
 -- 1. 创建表
 CREATE TABLE retry_task (
     id BIGINT GENERATED ALWAYS AS IDENTITY (START WITH 1094) PRIMARY KEY,
-    gmt_create TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    gmt_modified TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    gmt_create TIMESTAMP(3) WITHOUT TIME ZONE NOT NULL,
+    gmt_modified TIMESTAMP(3) WITHOUT TIME ZONE NOT NULL,
     sharding_key BIGINT NOT NULL,
     task_desc VARCHAR(128),
     task_code VARCHAR(128),
@@ -61,7 +61,7 @@ CREATE TABLE retry_task (
     interval_second INTEGER,
     delay_second INTEGER,
     max_execute_time INTEGER,
-    next_plan_time TIMESTAMP WITHOUT TIME ZONE,
+    next_plan_time TIMESTAMP(3) WITHOUT TIME ZONE,
     retry_num INTEGER,
     creator VARCHAR(64),
     executor VARCHAR(64),

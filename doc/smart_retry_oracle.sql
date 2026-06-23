@@ -21,11 +21,11 @@
 -- 创建 retry_sharding 表
 CREATE TABLE retry_sharding (
     id              NUMBER(20)      NOT NULL,
-    gmt_create      DATE            NOT NULL,
+    gmt_create      TIMESTAMP(3)    NOT NULL,
     status          NUMBER(3)       NOT NULL,
     creator_id     VARCHAR2(128),
     instance_id     VARCHAR2(128),
-    last_heartbeat  DATE
+    last_heartbeat  TIMESTAMP(3)
 );
 
 -- 添加主键约束
@@ -67,7 +67,7 @@ END;
 CREATE TABLE retry_task (
     id                      NUMBER(20)      NOT NULL,
     gmt_create              DATE            NOT NULL,
-    gmt_modified            DATE            NOT NULL,
+    gmt_modified            TIMESTAMP(3)    NOT NULL,
     sharding_key            NUMBER(20)      NOT NULL,
     task_desc               VARCHAR2(128),
     task_code               VARCHAR2(128),
@@ -77,7 +77,7 @@ CREATE TABLE retry_task (
     interval_second         NUMBER(10),
     delay_second            NUMBER(10),
     max_execute_time        NUMBER(10),
-    next_plan_time          DATE,
+    next_plan_time          TIMESTAMP(3),
     retry_num               NUMBER(10),
     creator                 VARCHAR2(64),
     executor                VARCHAR2(64),
