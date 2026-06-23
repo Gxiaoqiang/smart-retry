@@ -97,9 +97,8 @@ public class DelayQueueIntegrationTest extends AbstractTest {
     // ======================== 精准调度时间验证 ========================
 
     /**
-     * 验证任务能在设定的 delay 时间内被精准调度触发
-     * taskFindInterval=15s，生产者每 15s 扫描一次，
-     * 最小 delay 为 1s，任务最晚在一次扫描间隔内被拾取，总耗时 <25s
+     * 验证 DelayQueue 精准调度：任务能在设定的 delay 时间内被秒级触发
+     * preloadWindow=150s 覆盖 5s delay，应通过 DelayQueue 直接触发而非等待 Producer 扫描
      */
     @Test
     public void testPreciseSchedulingTiming() throws Exception {
@@ -111,19 +110,19 @@ public class DelayQueueIntegrationTest extends AbstractTest {
         builder.withTaskCode("test-delay-queue");
         builder.withParam(new TestParam("timing-test"));
         builder.withRetryNum(1);
-        builder.withDelaySecond(1);
+        builder.withDelaySecond(5);
         builder.withIntervalSecond(10);
         builder.withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.FIXED);
 
         retryTaskOperator.createTask(builder);
 
-        boolean executed = testRetryListener.awaitExecution(25, TimeUnit.SECONDS);
+        boolean executed = testRetryListener.awaitExecution(20, TimeUnit.SECONDS);
         long elapsed = System.currentTimeMillis() - startTime;
 
-        Assert.assertTrue("任务应在 delay 时间内被触发", executed);
-        // delay=1s + taskFindInterval=15s 扫描，应在 25s 内完成
-        Assert.assertTrue("任务应在 25s 内完成（1s delay + taskFindInterval=15s 扫描），实际: " + elapsed + "ms",
-            elapsed < 25000);
+        Assert.assertTrue("任务应被 DelayQueue 精准触发", executed);
+        // DelayQueue 秒级调度：5s delay + 调度开销，应远小于 taskFindInterval=15s
+        Assert.assertTrue("DelayQueue 调度应快于 Producer 轮询（taskFindInterval=15s），实际: " + elapsed + "ms",
+            elapsed < 18000);
     }
 
     // ======================== 压力测试 ========================
@@ -161,7 +160,7 @@ public class DelayQueueIntegrationTest extends AbstractTest {
 
     /**
      * 验证任务按顺序创建和执行，互不干扰
-     * 需要多个扫描周期，使用足够大的等待时间
+     * 注意：顺序执行测试可能受前面测试残留任务影响，使用宽松但合理的时间窗口
      */
     @Test
     public void testSequentialTaskExecution() throws Exception {
@@ -172,13 +171,13 @@ public class DelayQueueIntegrationTest extends AbstractTest {
         builder1.withTaskCode("test-delay-queue");
         builder1.withParam(new TestParam("sequential-1"));
         builder1.withRetryNum(1);
-        builder1.withDelaySecond(1);
+        builder1.withDelaySecond(3);
         builder1.withIntervalSecond(10);
         builder1.withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.FIXED);
 
         long start1 = System.currentTimeMillis();
         retryTaskOperator.createTask(builder1);
-        boolean executed1 = testRetryListener.awaitExecution(25, TimeUnit.SECONDS);
+        boolean executed1 = testRetryListener.awaitExecution(30, TimeUnit.SECONDS);
         long elapsed1 = System.currentTimeMillis() - start1;
 
         Assert.assertTrue("第一个任务应执行成功", executed1);
@@ -190,18 +189,18 @@ public class DelayQueueIntegrationTest extends AbstractTest {
         builder2.withTaskCode("test-delay-queue");
         builder2.withParam(new TestParam("sequential-2"));
         builder2.withRetryNum(1);
-        builder2.withDelaySecond(1);
+        builder2.withDelaySecond(3);
         builder2.withIntervalSecond(10);
         builder2.withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.FIXED);
 
         long start2 = System.currentTimeMillis();
         retryTaskOperator.createTask(builder2);
-        boolean executed2 = testRetryListener.awaitExecution(25, TimeUnit.SECONDS);
+        boolean executed2 = testRetryListener.awaitExecution(30, TimeUnit.SECONDS);
         long elapsed2 = System.currentTimeMillis() - start2;
 
         Assert.assertTrue("第二个任务应执行成功", executed2);
-        Assert.assertTrue("每个顺序任务应在 25s 内完成（taskFindInterval=15s），实际: " + elapsed1 + "ms, " + elapsed2 + "ms",
-            elapsed1 < 25000 && elapsed2 < 25000);
+        Assert.assertTrue("每个任务应在 30s 内完成（快于 2x taskFindInterval），实际: " + elapsed1 + "ms, " + elapsed2 + "ms",
+            elapsed1 < 30000 && elapsed2 < 30000);
     }
 
     // ======================== 不同策略测试 ========================

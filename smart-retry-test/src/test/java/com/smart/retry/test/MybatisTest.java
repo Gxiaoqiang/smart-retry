@@ -117,7 +117,7 @@ public class MybatisTest extends AbstractTest {
                     .withTaskCode("TestClassWithParam")
                     .withTaskDesc("Test")
                     .withIntervalSecond(20)
-                    .withDelaySecond(2)
+                    .withDelaySecond(10)
                     .withParam(new TestModel("123", "456",2));
             TestModel testModel = new TestModel("123", "456",2);
             TestModel.ModelBuilder modelBuilder = new TestModel.ModelBuilder();
@@ -129,7 +129,7 @@ public class MybatisTest extends AbstractTest {
             e.printStackTrace();
         }
 
-
+        TimeUnit.SECONDS.sleep(3000);
         //retryTaskCreator.createTask(retryTask);
 
         //retryTaskCreator.createTask(testRetry, "testException", new Object[]{}, new Class[]{});
