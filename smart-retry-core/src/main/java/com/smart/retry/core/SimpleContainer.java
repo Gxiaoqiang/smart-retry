@@ -481,6 +481,24 @@ public class SimpleContainer implements RetryContainer {
         }
     }
 
+    // ========== 监控方法（测试 & 运维） ==========
+
+    /**
+     * 获取当前内存中的任务数量（inMemoryTaskKeys 大小）
+     */
+    public static int getInMemoryTaskCount() {
+        return inMemoryTaskKeys.size();
+    }
+
+    /**
+     * 获取 DelayQueue 中待调度的任务数量
+     */
+    public static int getDelayQueueSize() {
+        return delayQueue.size();
+    }
+
+    // ========== 原有方法 ==========
+
     private static void doProduceTask(RetryTask retryTask, RetryConfiguration retryConfiguration) {
         //任务存在则不处理，避免重复处理
         if (checkTaskExists(retryTask)) {

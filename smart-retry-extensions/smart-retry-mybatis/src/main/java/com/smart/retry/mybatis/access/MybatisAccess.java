@@ -112,7 +112,7 @@ public class MybatisAccess implements RetryTaskAccess {
 
     @Override
     public void deleteRetryTask(long taskId) {
-        //retryTaskRepo.deleteRetryTask(taskId);
+        retryTaskRepo.deleteRetryTask(taskId);
     }
 
     @Override

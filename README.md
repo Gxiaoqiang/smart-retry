@@ -88,6 +88,99 @@
 
 ---
 
+### ⏱️ 6. **DelayQueue 精准调度（Precise Scheduling）**
+
+这是 smart-retry 在 **v1.0.2** 引入的核心升级。旧版本采用纯轮询模式，任务调度精度受限于 `taskFindInterval`（默认 20 秒），无法满足秒级重试需求。
+
+#### 两级调度模型
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     任务创建路径                              │
+│                                                             │
+│  createTask() / @RetryOnMethod                               │
+│       │                                                     │
+│       ▼                                                     │
+│  ┌─────────────┐    nextPlanTime 在窗口内?    ┌───────────┐ │
+│  │ 写入 DB      │ ──────────────────────────▶ │ 写入 DB    │ │
+│  │ + 入 DelayQueue │  ✅ 是（精准路径）         │ （兜底路径） │ │
+│  └─────────────┘                              └───────────┘ │
+│                                                      │      │
+│                                                      ▼      │
+│                                              Producer 定时扫描│
+│                                              （每 taskFindInterval）│
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                     DelayQueue 内存层                         │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  ScheduledTask(nextPlanTime=12:00:03)                │   │
+│  │  ScheduledTask(nextPlanTime=12:00:05)   ← 按时间排序  │   │
+│  │  ScheduledTask(nextPlanTime=12:00:08)                │   │
+│  │  ...                                                 │   │
+│  └──────────────────────────────────────────────────────┘   │
+│       │                                                     │
+│       │ take() 阻塞，到期自动唤醒                              │
+│       ▼                                                     │
+│  ┌──────────────┐    validateTaskInDB    ┌───────────────┐  │
+│  │ SchedulerThread│ ───────────────────▶ │ consumerExecutor│  │
+│  │ （精准触发）    │       DB 校验通过      │ （线程池执行）   │  │
+│  └──────────────┘                        └───────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**两层分工：**
+
+| 层级 | 组件 | 职责 | 精度 |
+|------|------|------|------|
+| **精准层** | `DelayQueue` + `SchedulerThread` | 任务创建/重试时直接入队，按 `next_plan_time` 排序，到期毫秒级触发 | **秒级（<1s 偏差）** |
+| **兜底层** | `ProducerTask`（低频轮询） | 扫描 DB 中遗漏的任务（如服务重启恢复、窗口外任务），加载到 DelayQueue | `taskFindInterval` 级别 |
+
+#### 调度精度对比
+
+| 场景 | 旧版（纯轮询） | 新版（DelayQueue） |
+|------|--------------|-------------------|
+| 任务创建后首次执行（delay=5s） | 0~20s（等下一轮扫描） | **≈5s（秒级精准）** |
+| 失败重试入队（interval=10s） | 0~20s | **≈10s（策略计算精准）** |
+| 服务重启后恢复 | 0~20s | 0~`taskFindInterval`（兜底路径） |
+| 大量任务同时到期 | 受限于线程池排队 | 受限于线程池排队（无变化） |
+| 系统时钟回拨 | 影响扫描间隔 | `DelayQueue.take()` 永久阻塞需等待下轮 Producer |
+
+#### 预加载窗口（Preload Window）
+
+```
+preloadWindow = taskFindInterval × scanPreloadMultiplier
+
+示例：taskFindInterval=20s, scanPreloadMultiplier=2
+     → preloadWindow = 40s
+
+任务 nextPlanTime 在 [now, now+40s] 内 → ✅ 直接入 DelayQueue（精准路径）
+任务 nextPlanTime 在 now+40s 之后     → ⏳ 仅写 DB，等 Producer 后续扫描（兜底路径）
+```
+
+#### 内存保护机制
+
+为防止任务洪峰导致 OOM，系统内置两层保护：
+
+| 保护机制 | 控制点 | 默认值 | 说明 |
+|---------|--------|--------|------|
+| `maxInMemory` | Producer 扫描上限 | 3000 | 内存中任务数达上限后，Producer 跳过本轮扫描，避免无限膨胀 |
+| `inMemoryTaskKeys` | 去重 + 容量感知 | — | 基于 `ConcurrentHashMap`，相同 `uniqueKey` 只入队一次 |
+| `consumerQueue` | 线程池队列 | 3000（`ArrayBlockingQueue`） | 有界队列 + `CallerRunsPolicy`，队列满时调度线程同步执行 |
+| `afterExecute` 清理 | 执行完毕释放 | — | 任务执行完后立即从 `inMemoryTaskKeys` 移除，释放内存 |
+
+> ⚠️ **注意**：任务创建路径（`enqueueIfInWindow`）**不受** `maxInMemory` 限制。如果瞬时创建数万任务且都在窗口内，DelayQueue 会承载全部任务。建议通过业务层限流或合理设置 `maxInMemory` 来控制。
+
+#### 调度线程安全
+
+- `SchedulerThread` 单线程从 `DelayQueue.take()`，天然避免并发出队问题
+- 任务执行前 **二次校验 DB 状态**（`validateTaskInDB`）：检查任务是否仍为 WAITING/FAIL、retryNum > 0、分片归属正确
+- 校验失败则移除内存标记，不影响其他任务
+- ConsumerTask 异常被 `catch Throwable` 兜底，不会中断调度线程
+
+---
+
 ### 💡 典型应用场景
 
 - 支付成功后通知 ERP 系统
@@ -161,35 +254,43 @@ CREATE TABLE `retry_task` (
 
 ```yaml
 spring:
-
     smart-retry:
       mybatis:
-        enabled: true # 是否启用任务重试
-        dataSource: dataSource #系统数据源bean名称
-      # 任务扫描间隔（秒），默认20秒
-      task-find-interval: 10
-      
-      # 死信任务检测，如果不配置默认不检测
+        enabled: true               # 是否启用任务重试
+        dataSource: dataSource      # 系统数据源 bean 名称
+
+      # ====== 调度参数 ======
+      task-find-interval: 10        # 任务扫描间隔（秒），默认 20。控制 Producer 兜底扫描频率
+      scan-preload-multiplier: 2    # 🆕 预加载窗口倍数，默认 2。preloadWindow = taskFindInterval × multiplier
+      max-in-memory: 3000           # 🆕 内存最大任务数，默认 3000。达到上限后 Producer 跳过扫描
+
+      # ====== 死信任务检测 ======
       dead-task:
         dead-task-check: true
-        task-max-execute-timeout: 3600  # 超过1小时未完成视为死信，自动将任务恢复为待执行状态
-    
-      # 历史任务清理，如果不配置默认不开启
+        task-max-execute-timeout: 3600  # 超过 1 小时未完成视为死信，自动恢复为待执行状态
+
+      # ====== 历史任务清理 ======
       clear-task:
         enabled: true
-        before-days: 3  # 清理3天前的数据
-        cron: 0 0 3 * * ?  # 可选：自定义清理cron时间节点,默认每天凌晨三单执行清理
-      health:
-        interval: 3 # 心跳间隔（秒），默认3秒
-        timeout: 10 # 心跳超时时间：超过此时间未收到心跳，实例被视为死亡，默认240秒
-        scan-interval: 5 #后台检测任务的扫描间隔（用于接管失效实例）
+        before-days: 3              # 清理 3 天前的数据
+        limit-rows: 100             # 每次最多清理 100 行
+        cron: 0 0 3 * * ?           # 每天凌晨 3 点执行清理
 
-      # 自定义线程池，如果不配置则使用默认线程池
+      # ====== 心跳 & 故障转移 ======
+      health:
+        interval: 3                 # 心跳间隔（秒），默认 3
+        timeout: 240                # 心跳超时（秒），默认 240。超时未心跳实例被判死亡
+        scan-interval: 5            # 死分片扫描间隔（秒），用于接管失效实例
+
+      # ====== 线程池 ======
       executor:
         core-pool-size: 4
         max-pool-size: 8
-        queue-capacity: 3000
+        queue-capacity: 3000        # 有界队列，满时 CallerRunsPolicy 在调度线程同步执行
         keep-alive-seconds: 60
+
+      # ====== 日志 ======
+      logger: true                  # 开启 INFO 日志（可观测 Producer 加载、入队数量）
 ```
 
 ---
@@ -367,18 +468,55 @@ public class EmailAlertNotify implements RetryTaskNotify {
 
 ## 🧪 高级配置说明
 
-| 配置项 | 默认值 | 说明                  |
-|-------|--------|---------------------|
-| `smart-retry.task-find-interval` | `20` | 任务扫描间隔（秒），最小可以设置为1秒 |
-| `smart-retry.dead-task.dead-task-check` | `false` | 是否开启死信检测            |
-| `smart-retry.clear-task.enabled` | `false` | 是否开启历史清理            |
-| `smart-retry.executor.*` | 见下表 | 线程池参数               |
+以下为 `spring.smart-retry` 前缀下的全部配置属性：
 
-**线程池默认值**：
-- `corePoolSize`: CPU 核数 + 1
-- `maxPoolSize`: CPU 核数 × 2
-- `queueCapacity`: 3000
-- `keepAliveSeconds`: 60
+### 调度相关
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|-------|------|--------|------|
+| `task-find-interval` | `int` | `20` | 任务扫描间隔（秒），控制 Producer 兜底扫描频率。最小可设为 1 秒 |
+| `scan-preload-multiplier` | `int` | `2` | **🆕 预加载窗口倍数**。`preloadWindow = taskFindInterval × scanPreloadMultiplier`。窗口内的任务创建后直接入 DelayQueue（精准路径），窗口外的等 Producer 兜底 |
+| `max-in-memory` | `int` | `3000` | **🆕 内存最大任务数**。达到上限后 Producer 跳过扫描，防止 OOM。最小值 100 |
+
+### 线程池
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|-------|------|--------|------|
+| `executor.name` | `String` | `smart-retry-executor` | 线程池名称 |
+| `executor.core-pool-size` | `int` | `CPU核数 + 1` | 核心线程数 |
+| `executor.max-pool-size` | `int` | `CPU核数 × 2` | 最大线程数 |
+| `executor.queue-capacity` | `int` | `3000` | 任务队列容量（`ArrayBlockingQueue`）。队列满时触发 `CallerRunsPolicy`，在调度线程中同步执行 |
+| `executor.keep-alive-seconds` | `int` | `60` | 非核心线程空闲存活时间（秒） |
+
+### 死信检测
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|-------|------|--------|------|
+| `dead-task.dead-task-check` | `boolean` | `false` | 是否开启死信检测。开启后，任务执行超时会被自动重置为 WAITING 状态重新调度 |
+| `dead-task.task-max-execute-timeout` | `int` | `1800`（30分钟） | 任务执行超时阈值（秒）。超过此时间任务仍为 RUNNING 状态，视为死信 |
+
+### 历史清理
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|-------|------|--------|------|
+| `clear-task.enabled` | `boolean` | `false` | 是否开启历史任务清理 |
+| `clear-task.cron` | `String` | `0 0 3 * * ?` | 清理任务的 Cron 表达式（默认每天凌晨 3 点） |
+| `clear-task.before-days` | `int` | `30` | 清理多少天之前的历史任务（最小值 1） |
+| `clear-task.limit-rows` | `int` | `100` | 每次清理的最大行数，防止对 DB 造成压力 |
+
+### 心跳 & 故障转移
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|-------|------|--------|------|
+| `health.interval` | `int` | `3` | 心跳发送间隔（秒） |
+| `health.timeout` | `int` | `240` | 心跳超时时间（秒），超过此时间无心跳则实例被判死亡 |
+| `health.scan-interval` | `int` | `5` | 死分片扫描间隔（秒），用于接管失效实例 |
+
+### 日志
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|-------|------|--------|------|
+| `logger` | `boolean` | `false` | 是否打印 INFO 级别日志（开启后可观测 Producer 加载、入队数量等） |
 
 ---
 
