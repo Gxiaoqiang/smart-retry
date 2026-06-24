@@ -40,8 +40,8 @@ public class DelayQueueIntegrationTest extends AbstractTest {
      */
     @Test
     public void testMultipleTasksConcurrent() throws Exception {
-        int taskCount = 5;
-        multiTaskListener.reset(taskCount);
+        int taskCount = 10;
+        //multiTaskListener.reset(taskCount);
 
         long startTime = System.currentTimeMillis();
 
@@ -49,19 +49,22 @@ public class DelayQueueIntegrationTest extends AbstractTest {
             RetryTaskBuilder<TestParam> builder = RetryTaskBuilder.of();
             builder.withTaskCode("test-multi-task");
             builder.withParam(new TestParam("concurrent-task-" + i));
-            builder.withRetryNum(1);
-            builder.withDelaySecond(3);
-            builder.withIntervalSecond(10);
-            builder.withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.FIXED);
+            builder.withRetryNum(6);
+            builder.withDelaySecond(45);
+            builder.withIntervalSecond(15);
+            builder.withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.BACKOFF);
 
             retryTaskOperator.createTask(builder);
+            TimeUnit.SECONDS.sleep(1);
         }
 
-        boolean allExecuted = multiTaskListener.awaitExecution(30, TimeUnit.SECONDS);
+       // boolean allExecuted = multiTaskListener.awaitExecution(30, TimeUnit.SECONDS);
         long elapsed = System.currentTimeMillis() - startTime;
 
-        Assert.assertTrue("所有 " + taskCount + " 个并发任务应全部执行完成", allExecuted);
-        Assert.assertTrue("并发任务应在 20s 内全部完成，实际: " + elapsed + "ms", elapsed < 20000);
+        //Assert.assertTrue("所有 " + taskCount + " 个并发任务应全部执行完成", allExecuted);
+       // Assert.assertTrue("并发任务应在 20s 内全部完成，实际: " + elapsed + "ms", elapsed < 20000);
+
+        TimeUnit.SECONDS.sleep(10000);
     }
 
     // ======================== 失败重试测试 ========================

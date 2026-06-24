@@ -201,7 +201,7 @@
                     executor = #{executor},
                 </if>
 
-                <if test="attribute != null">
+                <if test="attribute != null and attribute != '' ">
                     attribute = #{attribute,jdbcType=LONGVARCHAR},
                 </if>
                 <if test="parameters != null">

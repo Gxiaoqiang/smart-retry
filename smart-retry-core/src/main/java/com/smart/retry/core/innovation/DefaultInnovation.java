@@ -54,7 +54,7 @@ public class DefaultInnovation implements SmartInnovation {
 
     private void beforeProcessTask(RetryTask retryTask) {
         retryTask.setStatus(RetryTaskStatus.RUNNING.getCode());
-        processNextExecuteTime(retryTask);
+
         Integer retryNum = retryTask.getRetryNum();
         if (retryNum >= 1) {
             retryTask.setRetryNum(retryNum - 1);
@@ -66,23 +66,16 @@ public class DefaultInnovation implements SmartInnovation {
     @Override
     public Object invoke() throws Throwable {
 
-        String taskCode = retryTask.getTaskCode();
+        processNextExecuteTime(retryTask);
 
+        String taskCode = retryTask.getTaskCode();
         RetryTaskObject taskObject = RetryCache.get(taskCode);
         if (taskObject == null) {
             LOGGER.error("[DefaultInnovation#invoke]taskObject is null, taskCode:{}", taskCode);
 
             // 手动更新任务状态：减少重试次数、标记失败
             // 不调用beforeProcessTask，保留原有nextPlanTime不变
-            Integer retryNum = retryTask.getRetryNum();
-            if (retryNum != null && retryNum >= 1) {
-                retryTask.setRetryNum(retryNum - 1);
-            }
-            retryTask.setStatus(RetryTaskStatus.FAIL.getCode());
-            retryTask.setExecutor(IpUtils.getIp());
-            retryConfiguration.getRetryTaskAcess().updateRetryTask(retryTask);
-
-            ExecuteResultStatus localExecuteResultStatus = ExecuteResultStatus.FAIL;
+            processNullTaskObject();
             // 直接更新DB状态，不走finally块（避免notify NPE）
             return null;
         }
@@ -139,6 +132,17 @@ public class DefaultInnovation implements SmartInnovation {
             retryConfiguration.getRetryTaskAcess().updateRetryTask(retryTask);
             notify(taskObject, taskCode, notifyContext, executeResultStatus, throwable);
         }
+    }
+
+    private void processNullTaskObject() {
+        Integer retryNum = retryTask.getRetryNum();
+        if (retryNum != null && retryNum >= 1) {
+            retryTask.setRetryNum(retryNum - 1);
+        }
+        retryTask.setStatus(RetryTaskStatus.FAIL.getCode());
+        retryTask.setExecutor(IpUtils.getIp());
+        retryTask.setAttribute("taskObject is null");
+        retryConfiguration.getRetryTaskAcess().updateRetryTask(retryTask);
     }
 
 

@@ -44,8 +44,8 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
             logger.warn("[RetryTaskRepoImpl-saveRetryTask]uniqueKey:{} already exists, skip insert", uniqueKey);
             return -1;
         }
-        long nextTime = System.currentTimeMillis() + retryTask.getDelaySecond() * 1000;
-        retryTask.setNextPlanTime(new Date(nextTime));
+        //long nextTime = System.currentTimeMillis() + retryTask.getDelaySecond() * 1000;
+        //retryTask.setNextPlanTime(new Date(nextTime));
         retryTask.setOriginRetryNum(retryTask.getRetryNum());
         retryTask.setCreator(IpUtils.getIp());
         retryTaskDao.insert(retryTask);

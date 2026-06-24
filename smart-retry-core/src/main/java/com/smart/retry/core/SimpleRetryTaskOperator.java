@@ -63,6 +63,7 @@ public class SimpleRetryTaskOperator<T> implements RetryTaskOperator<T> {
 
         long taskId = retryConfiguration.getRetryTaskAcess().saveRetryTask(retryTask);
 
+        retryTask.setId(taskId);
         // 将任务加入 DelayQueue 精准调度（窗口内才入队）
         SimpleContainer.enqueueIfInWindow(retryTask);
 

@@ -250,7 +250,7 @@
                     executor = #{executor},
                 </if>
 
-                <if test="attribute != null">
+                <if test="attribute != null  and attribute != '' ">
                     attribute = #{attribute,jdbcType=CLOB}, -- 建议使用 CLOB
                 </if>
                 <if test="parameters != null">

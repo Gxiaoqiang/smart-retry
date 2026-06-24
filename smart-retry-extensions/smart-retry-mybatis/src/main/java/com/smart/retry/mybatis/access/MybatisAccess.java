@@ -93,6 +93,10 @@ public class MybatisAccess implements RetryTaskAccess {
 
     @Override
     public long saveRetryTask(RetryTask retryTask) {
+
+        long nextTime = System.currentTimeMillis() + retryTask.getDelaySecond() * 1000;
+        retryTask.setNextPlanTime(new Date(nextTime));
+
         RetryTaskDO retryTaskDO = new RetryTaskDO();
         BeanUtils.copyProperties(retryTask, retryTaskDO);
        return retryTaskRepo.saveRetryTask(retryTaskDO);

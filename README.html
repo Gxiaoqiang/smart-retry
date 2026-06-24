@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>README</title>
+
+<style>
+  body {
+    max-width: 880px;
+    margin: 40px auto;
+    padding: 0 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    color: #24292f;
+    background: #fff;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+    border-bottom: 1px solid #d8dee4;
+    padding-bottom: 8px;
+  }
+  h1 { font-size: 2em; }
+  h2 { font-size: 1.5em; }
+  h3 { font-size: 1.25em; }
+  p { margin: 0 0 16px; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  img { max-width: 100%; }
+
+  /* Code */
+  code {
+    font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+    background: rgba(175,184,193,0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #1e1e2e;
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 0 0 16px;
+    line-height: 1.5;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.88em;
+    color: #cdd6f4;
+    border-radius: 0;
+  }
+
+  /* Syntax highlighting colors (Catppuccin Mocha theme) */
+  .keyword  { color: #cba6f7; font-weight: bold; }
+  .builtin  { color: #89b4fa; }
+  .string   { color: #a6e3a1; }
+  .comment  { color: #6c7086; font-style: italic; }
+  .number   { color: #fab387; }
+  .function { color: #89b4fa; }
+  .decorator{ color: #f9e2af; }
+  .variable { color: #f38ba8; }
+  .key      { color: #89b4fa; }
+  .tag      { color: #cba6f7; }
+  .attr     { color: #a6e3a1; }
+  .selector { color: #89b4fa; }
+  .property { color: #89dceb; }
+  .value    { color: #a6e3a1; }
+  .color    { color: #fab387; }
+  .operator { color: #94e2d5; }
+
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0 0 16px;
+  }
+  th, td {
+    border: 1px solid #d8dee4;
+    padding: 8px 14px;
+    text-align: left;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) { background: #f6f8fa; }
+
+  /* Blockquote */
+  blockquote {
+    border-left: 4px solid #d8dee4;
+    margin: 0 0 16px;
+    padding: 0 16px;
+    color: #656d76;
+  }
+
+  /* Lists */
+  ul, ol { margin: 0 0 16px; padding-left: 24px; }
+  li { margin: 4px 0; }
+
+  /* Task list */
+  input[type="checkbox"] { margin-right: 8px; accent-color: #8250df; }
+
+  /* Horizontal rule */
+  hr {
+    border: none;
+    border-top: 2px solid #d8dee4;
+    margin: 24px 0;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #0d1117; color: #c9d1d9; }
+    h1, h2, h3, h4, h5, h6 { border-color: #30363d; }
+    a { color: #58a6ff; }
+    code { background: rgba(110,118,129,0.4); }
+    th { background: #161b22; }
+    th, td { border-color: #30363d; }
+    tr:nth-child(even) { background: #161b22; }
+    blockquote { border-color: #30363d; color: #8b949e; }
+    hr { border-color: #30363d; }
+  }
+</style>
+
+</head>
+<body>
+<h1>整体架构</h1>
+<p><img src="整体架构.png" alt="整体架构.png"></p>
+<h3>目前本组件已经在生产环境使用，欢迎大家使用。如果有问题、欢迎提 issue。</h3>
+<h3>✅ 1. <strong>重试任务与业务事务强一致（Transaction-Aware Retry）</strong></h3>
+<p>这是 smart-retry 最重要的设计目标。。</p>
+<ul>
+<li><strong>问题背景</strong>：传统重试（如 Spring Retry）在方法失败后立即重试，但如果系统崩溃或重启，未完成的重试会丢失；若用定时补偿，则“创建补偿任务”和“业务操作”不在同一事务中，可能造成数据不一致（比如订单创建成功了，但补偿任务没注册）。</li>
+</ul>
+<ul>
+<li><p><strong>smart-retry 的解法</strong>：</p>
+<ul>
+<li>将“注册重试任务”作为一个数据库记录插入操作。</li>
+<li><strong>该插入操作与当前业务逻辑（如创建订单）处于同一个本地数据库事务中</strong>。</li>
+<li>事务提交成功 ⇒ 重试任务一定被持久化；事务回滚 ⇒ 重试任务不会残留。</li>
+</ul></li>
+</ul>
+<blockquote>
+<p>💡 这保证了 <strong>“要么业务成功且无需重试，要么业务部分成功但重试任务已就位”</strong>，实现最终一致性。 避免了“补偿任务注册”和“业务操作”不在同一事务中导致的数据不一致问题。</p>
+</blockquote>
+<h3>✅ 2. <strong>任务持久化 + 异步调度（Persistent &amp; Async Execution）</strong></h3>
+<ul>
+<li>所有需要重试的任务都会被序列化并存储到数据库表中（如 <code>retry_task</code> 表）。</li>
+<li>系统启动后，后台有一个<strong>轻量级调度器</strong> 定期扫描未完成的任务并执行。</li>
+<li>支持服务重启后自动恢复未完成的重试，<strong>避免任务丢失</strong>。</li>
+</ul>
+<blockquote>
+<p>📌 对比：Guava Retry / Spring Retry 是纯内存、同步、无持久化的，不适合跨进程/宕机场景。</p>
+</blockquote>
+<hr>
+<h3>✅ 3. <strong>轻量嵌入式架构（Embedded &amp; Non-Intrusive）</strong></h3>
+<ul>
+<li>以 <strong>二方包（内部 SDK）</strong> 形式提供，通过 </li>
+<li><code>`xml &lt;dependency&gt; &lt;groupId&gt;com.smart.retry&lt;/groupId&gt; &lt;artifactId&gt;smart-retry-mybatis-start&lt;/artifactId&gt; &lt;version&gt;${smart-retry.version}&lt;/version&gt; &lt;/dependency&gt; </code>` 依赖，可快速接入 Spring Boot 应用。</li>
+</ul>
+<ul>
+<li>开发者只需调用接口或使用注解，<strong>无需部署独立中间件</strong>（如 Kafka、RocketMQ 做延迟消息）。</li>
+<li>依赖少，仅需数据库（MySQL/PostgreSQL/Oracle）、Java 运行时环境（JRE 等），适合中小规模系统快速集成。</li>
+</ul>
+<hr>
+<h3>✅ 4. <strong>服务高可用与容错（Auto Failover &amp; Load Balance）</strong></h3>
+<ul>
+<li>支持 <strong>多实例部署</strong> 下的任务协调。</li>
+<li>通过数据任务分片的方式，每个实例只负责处理自己负责的任务，每个实例之间通过数据库分片实现负载均衡。当某个实例挂掉，其他实例会自动接管其待处理任务。</li>
+<li>避免了单点的故障，提升系统可用性。同时也避免了，单个实例执行任务对服务的压力。</li>
+<li>当某个服务实例下线，其他实例能自动接管其待处理任务，实现 <strong>自动故障转移（Failover）</strong>。</li>
+</ul>
+<hr>
+<h3>✅ 5. <strong>可扩展与可运维（Extensible &amp; Observable）</strong></h3>
+<ul>
+<li><p>模块化设计：</p>
+<ul>
+<li><code>smart-retry-core</code>：核心重试逻辑</li>
+<li><code>smart-retry-common</code>：通用工具类、DTO</li>
+<li><code>smart-retry-extensions</code>：扩展支持（如对 PostgreSQL 的适配）</li>
+<li><code>smart-retry-starters</code>：Spring Boot Starter，便于 Spring 项目一键集成</li>
+<li><code>smart-retry-test</code>：测试用例</li>
+</ul></li>
+</ul>
+<hr>
+<h3>🧩 设计思路</h3>
+<table>
+<thead><tr>
+<th>设计目标</th>
+<th>实现手段</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>**可靠性**</td>
+<td>任务持久化 + 事务绑定</td>
+</tr>
+<tr>
+<td>**一致性**</td>
+<td>本地事务内注册重试任务</td>
+</tr>
+<tr>
+<td>**可用性**</td>
+<td>多实例自动接管 + 故障恢复</td>
+</tr>
+<tr>
+<td>**易用性**</td>
+<td>Starter 自动配置 + 简洁 API</td>
+</tr>
+<tr>
+<td>**轻量性**</td>
+<td>无外部依赖，仅需 DB</td>
+</tr>
+<tr>
+<td>**事务执行**</td>
+<td>如果重试方法存在事务声明，会参与事务执行</td>
+</tr>
+</tbody></table>
+<hr>
+<h3>🔁 与主流重试方案对比</h3>
+<table>
+<thead><tr>
+<th>方案</th>
+<th>持久化</th>
+<th>事务集成</th>
+<th>异步</th>
+<th>服务重启恢复</th>
+<th>适用场景</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>**smart-retry**</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>企业内部高可靠异步任务</td>
+</tr>
+<tr>
+<td>Spring Retry</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌（默认同步）</td>
+<td>❌</td>
+<td>简单方法重试，临时失败</td>
+</tr>
+<tr>
+<td>Guava Retry</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>工具类重试，无状态操作</td>
+</tr>
+<tr>
+<td>延迟消息队列</td>
+<td>✅</td>
+<td>⚠️（需额外保障）</td>
+<td>✅</td>
+<td>✅</td>
+<td>大规模分布式系统</td>
+</tr>
+<tr>
+<td>定时补偿 Job</td>
+<td>✅</td>
+<td>❌（通常分离）</td>
+<td>✅</td>
+<td>✅</td>
+<td>老旧系统兜底方案</td>
+</tr>
+</tbody></table>
+<hr>
+<h3>💡 典型应用场景</h3>
+<ul>
+<li>支付成功后通知 ERP 系统</li>
+<li>用户注册后发送欢迎邮件（第三方 SMTP 可能超时）</li>
+<li>调用银行接口扣款失败后的重试</li>
+<li>微服务间最终一致性操作（如库存扣减 + 订单创建）</li>
+</ul>
+<hr>
+<h2>🚀 快速开始</h2>
+<h3>1. 引入依赖（Maven）</h3>
+<pre><code class="language-xml">&lt;dependency&gt;
+    &lt;groupId&gt;com.smart.retry&lt;/groupId&gt;
+    &lt;artifactId&gt;smart-retry-mybatis-start&lt;/artifactId&gt;
+    &lt;version&gt;${latest.version}&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+<blockquote>
+<p>💡 请替换 <code>${latest.version}</code> 为实际版本号。</p>
+</blockquote>
+<h3>2. 创建数据库表</h3>
+<p>执行 SQL 初始化重试任务表（以 MySQL 为例）：</p>
+<pre><code class="language-sql"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> `retry_sharding` (
+                               `id` bigint <span class="keyword">NOT</span> <span class="keyword">NULL</span> <span class="keyword">PRIMARY</span> <span class="keyword">KEY</span> AUTO_INCREMENT COMMENT <span class="string">&#x27;ID&#x27;</span>,
+                                gmt_create     DATETIME  <span class="keyword">NOT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;创建时间&#x27;</span>,
+                                status         TINYINT(<span class="number">4</span>) <span class="keyword">NOT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;状态 0:未分配 1:已分配&#x27;</span>,
+                                creator_id VARCHAR(<span class="number">128</span>) comment <span class="string">&#x27;创建分片的实例ID&#x27;</span>,
+                                instance_id VARCHAR(<span class="number">128</span>) comment <span class="string">&#x27;当前持有分片的实例ID&#x27;</span>,
+                                last_heartbeat DATETIME <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;最后心跳时间&#x27;</span>,
+                                <span class="keyword">KEY</span> `idx_instance_id` (`instance_id`),
+                                <span class="keyword">KEY</span> `idx_last_heartbeat` (`last_heartbeat`)
+)ENGINE = InnoDB <span class="keyword">DEFAULT</span> CHARSET = utf8mb4 COMMENT =<span class="string">&#x27;分片元数据表&#x27;</span>;
+
+
+<span class="keyword">CREATE</span> <span class="keyword">TABLE</span> `retry_task` (
+  `id` bigint <span class="keyword">NOT</span> <span class="keyword">NULL</span> <span class="keyword">PRIMARY</span> <span class="keyword">KEY</span> AUTO_INCREMENT COMMENT <span class="string">&#x27;ID&#x27;</span>,
+  `gmt_create` datetime <span class="keyword">NOT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;创建时间&#x27;</span>,
+  `gmt_modified` datetime <span class="keyword">NOT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;修改时间&#x27;</span>,
+  `sharding_key` bigint <span class="keyword">NOT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;分片键&#x27;</span>,
+  `task_desc` varchar(<span class="number">128</span>) <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;任务描述&#x27;</span>,
+  `task_code` varchar(<span class="number">128</span>) <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;需要执行的任务编码&#x27;</span>,
+  `parameters` text COMMENT <span class="string">&#x27;参数数据&#x27;</span>,
+  `attribute` text COMMENT <span class="string">&#x27;属性&#x27;</span>,
+  `status` tinyint <span class="keyword">NOT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;最终执行状态 0:待执行,1:执行中,3:执行失败,2:执行成功&#x27;</span>,
+  `interval_second` int <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;执行间隔秒,如果不填写默认是600秒(十分钟执行一次)&#x27;</span>,
+  `delay_second` int <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;初次创建任务延迟时间，默认是100秒后执行&#x27;</span>,
+  `max_execute_time` int <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;任务最大执行时间&#x27;</span>,
+  `next_plan_time` datetime <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;下次执行时间&#x27;</span>,
+  `retry_num` int <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;重试次数&#x27;</span>,
+  `creator` varchar(<span class="number">64</span>) <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;创建者(默认是IP)&#x27;</span>,
+  `executor` varchar(<span class="number">64</span>) <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;执行者&#x27;</span>,
+  `origin_retry_num` int <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;存放任务原始的次数&#x27;</span>,
+  `current_log_id` bigint <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;当前运行日志id&#x27;</span>,
+  `unique_key` varchar(<span class="number">64</span>) <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;唯一标识&#x27;</span>,
+  `next_plan_time_strategy` int <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span>,
+  <span class="keyword">KEY</span> `idx_next_plan_time` (`next_plan_time`),
+  <span class="keyword">KEY</span> `idx_status_sharding_key_next_plan_time_retry_num` (`status`,sharding_key,`next_plan_time`,`retry_num`),
+  <span class="keyword">KEY</span> `idx_gmt_create_sharding_key` (`gmt_create`,`sharding_key`),
+  <span class="keyword">KEY</span> `idx_unique_key` (`unique_key`)
+) ENGINE=InnoDB AUTO_INCREMENT=<span class="number">1094</span> <span class="keyword">DEFAULT</span> CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT=<span class="string">&#x27;重试任务表&#x27;</span>;</code></pre>
+<h3>3. 配置 application.yml</h3>
+<pre><code class="language-yaml">spring:
+
+    smart-retry:
+      mybatis:
+        enabled: true # 是否启用任务重试
+        dataSource: dataSource #系统数据源bean名称
+      # 任务扫描间隔（秒），默认20秒
+      task-find-interval: 10
+      
+      # 死信任务检测，如果不配置默认不检测
+      dead-task:
+        dead-task-check: true
+        task-max-execute-timeout: 3600  # 超过1小时未完成视为死信，自动将任务恢复为待执行状态
+    
+      # 历史任务清理，如果不配置默认不开启
+      clear-task:
+        enabled: true
+        before-days: 3  # 清理3天前的数据
+        cron: 0 0 3 * * ?  # 可选：自定义清理cron时间节点,默认每天凌晨三单执行清理
+      health:
+        interval: 3 # 心跳间隔（秒），默认3秒
+        timeout: 10 # 心跳超时时间：超过此时间未收到心跳，实例被视为死亡，默认240秒
+        scan-interval: 5 #后台检测任务的扫描间隔（用于接管失效实例）
+
+      # 自定义线程池，如果不配置则使用默认线程池
+      executor:
+        core-pool-size: 4
+        max-pool-size: 8
+        queue-capacity: 3000
+        keep-alive-seconds: 60</code></pre>
+<hr>
+<h2>🛠 使用方式</h2>
+<h3>方式一：监听器模式（<code>@RetryOnClass</code>）</h3>
+<p>适用于需要<strong>自定义重试逻辑</strong>的场景。</p>
+<h4>Step 1：定义监听器</h4>
+<pre><code class="language-java">@RetryOnClass(
+    taskCode = &quot;userNotifyTask&quot;,
+    retryTaskNotifies = {NotifyTest.class} // 可选：失败通知
+)
+public class UserNotifyListener implements RetryListener&lt;UserDTO&gt; {
+
+    /**
+     * 消费任务 ,
+     * 如果存在事务，会参与事务执行
+     * @param param 参数
+     * @return 执行结果
+     */
+    @Override
+    @Transactional
+    public ExecuteResultStatus consume(UserDTO param) {
+        try {
+            // 调用第三方通知服务
+            notificationService.send(param);
+            return ExecuteResultStatus.SUCCESS;
+        } catch (Exception e) {
+            log.error(&quot;通知失败&quot;, e);
+            return ExecuteResultStatus.FAIL; // 触发重试
+        }
+    }
+}
+
+public class NotifyTest implements RetryTaskNotify {
+
+
+    // 每次执行完毕后，触发一次通知
+    @Override
+    public void oneTimeNotify(NotifyContext context) {
+
+        if(context.getThrowable()!=null){
+            String taskName = context.getRetryTask().getTaskCode();
+            String params = context.getRetryTask().getParameters();
+            System.out.println(context.getThrowable().getMessage());
+        }
+
+        System.out.println(&quot;oneTimeNotify&quot;);
+    }
+
+    // 任务执行次数达到设置的最大次数后通知
+    @Override
+    public void allRetryTaskFinishNotify(NotifyContext context) {
+
+
+        System.out.println(&quot;finishTaskNotify&quot;);
+    }
+}</code></pre>
+<h4>Step 2：创建重试任务</h4>
+<pre><code class="language-java">@Autowired
+private RetryTaskOperator retryTaskOperator;
+
+public void testCreateTask() {
+    UserDTO user = new UserDTO(&quot;张三&quot;, &quot;zhangsan@example.com&quot;);
+    
+    RetryTaskBuilder&lt;UserDTO&gt; builder = RetryTaskBuilder.of()
+        .withTaskCode(&quot;userNotifyTask&quot;)
+        .withTaskDesc(&quot;用户注册通知&quot;)
+        .withRetryNum(3)
+        .withDelaySecond(5)          // 首次延迟5秒
+        .withIntervalSecond(10)      // 后续间隔10秒
+        .withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.BACKOFF)
+        .withParam(user);
+
+    // 创建任务,返回任务ID,系统会自动调度任务
+   long taskId = retryTaskOperator.createTask(builder);
+   
+}
+
+
+@Test
+public void testInvokeTask() {
+    
+    long taskId = 1;
+
+    // 任务创建后，如果需要立即触发执行，可以通过主动调用的方式进行任务的触发：
+    /**
+     * 异步触发任务
+     * 如果调用该方法，则任务会优先放到队列中，等待执行。如果队列中存在任务，则需要等待队列中的任务执行完成。
+     * 适合立即执行的任务，如领域事件、通知、短信、等。
+     */
+    retryTaskOperator.invokeTaskAsync(taskId);
+
+    /**
+     *  同步触发任务
+     *  触发任务，同步执行任务，如果调用该方法，则任务会立即执行。同时会阻塞当前线程，直到任务完成。
+     *  可以作为领域事件的的同步通知，如订单创建成功后通知用户。
+     */
+    retryTaskOperator.invokeTaskSync(taskId);
+}</code></pre>
+<hr>
+<h3>方式二：方法注解模式（<code>@RetryOnMethod</code>）</h3>
+<p>适用于<strong>已有方法需自动重试</strong>的场景，无需写监听器。</p>
+<pre><code class="language-java">@Service
+public class OrderService {
+
+    /**
+     * 如果调用失败会自动重试
+     * 如果存在事务，会参与事务执行
+     * @param order
+     */
+    @RetryOnMethod(
+        maxAttempt = 3,
+        firstDelaySecond = 2,
+        intervalSecond = 5,
+        nextPlanTimeStragy = NextPlanTimeStrategyEnum.FIBONACCI,
+        include = {RemoteCallException.class},
+        retryTaskNotifies = {SmsAlertNotify.class}
+    )
+    @Transactional
+    public void createOrder(Order order) {
+        // 调用支付系统
+        paymentClient.charge(order);
+        // 若抛出 RemoteCallException，则自动重试
+    }
+}</code></pre>
+<blockquote>
+<p>⚠️ 注意：方法必须是 <strong>public</strong>，且被 Spring 容器管理（AOP 生效）。</p>
+</blockquote>
+<hr>
+<h2>🔔 通知与回调</h2>
+<h3>自定义通知类</h3>
+<pre><code class="language-java">public class EmailAlertNotify implements RetryTaskNotify {
+    @Override
+    public void oneTimeNotify(NotifyContext context) {
+        log.info(&quot;第{}次重试，任务ID: {}&quot;, context.getRetryCount(), context.getTaskId());
+    }
+
+    @Override
+    public void allRetryTaskFinishNotify(NotifyContext context) {
+        if (context.getExecuteResultStatus().equals(ExecuteResultStatus.SUCCESS)) {
+            log.info(&quot;任务最终成功&quot;);
+        } else {
+            // 发送告警邮件/钉钉/企业微信
+            alertService.send(&quot;重试任务彻底失败: &quot; + context.getTaskCode());
+        }
+    }
+}</code></pre>
+<hr>
+<h2>🧪 高级配置说明</h2>
+<table>
+<thead><tr>
+<th>配置项</th>
+<th>默认值</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>`smart-retry.task-find-interval`</td>
+<td>`20`</td>
+<td>任务扫描间隔（秒），最小可以设置为1秒</td>
+</tr>
+<tr>
+<td>`smart-retry.dead-task.dead-task-check`</td>
+<td>`false`</td>
+<td>是否开启死信检测</td>
+</tr>
+<tr>
+<td>`smart-retry.clear-task.enabled`</td>
+<td>`false`</td>
+<td>是否开启历史清理</td>
+</tr>
+<tr>
+<td>`smart-retry.executor.*`</td>
+<td>见下表</td>
+<td>线程池参数</td>
+</tr>
+</tbody></table>
+<p><strong>线程池默认值</strong>：</p>
+<ul>
+<li><code>corePoolSize</code>: CPU 核数 + 1</li>
+<li><code>maxPoolSize</code>: CPU 核数 × 2</li>
+<li><code>queueCapacity</code>: 3000</li>
+<li><code>keepAliveSeconds</code>: 60</li>
+</ul>
+<hr>
+<p>以下是针对 <code>RetryTaskBuilder&lt;T&gt;</code> 中所有属性的详细说明，可直接作为 <strong>“重试任务属性详解”</strong> 章节插入到 <code>README.md</code> 中：</p>
+<hr>
+<h2>📋 重试任务属性详解（<code>RetryTaskBuilder</code>）</h2>
+<p>当你通过 <code>RetryTaskBuilder</code> 构建一个重试任务时，以下属性控制其行为：</p>
+<table>
+<thead><tr>
+<th>属性</th>
+<th>类型</th>
+<th>默认值</th>
+<th>必填</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>`taskCode`</td>
+<td>`String`</td>
+<td>—</td>
+<td>✅ 是</td>
+<td>**任务类型唯一标识**。必须与 `@RetryOnClass(taskCode = &quot;...&quot;)` 中的值一致，用于匹配具体的重试逻辑处理器。建议使用语义化命名，如 `&quot;orderCreateRetry&quot;`。</td>
+</tr>
+<tr>
+<td>`taskDesc`</td>
+<td>`String`</td>
+<td>—</td>
+<td>❌ 否</td>
+<td>任务描述，用于日志、监控或管理后台展示，便于运维识别。</td>
+</tr>
+<tr>
+<td>`param`</td>
+<td>`T`（泛型）</td>
+<td>—</td>
+<td>✅ 是</td>
+<td>**任务执行所需的业务参数**。框架会将其 JSON 序列化后存入数据库。支持复杂对象、List、Map 等。</td>
+</tr>
+<tr>
+<td>`retryNum`</td>
+<td>`Integer`</td>
+<td>—</td>
+<td>✅ 是</td>
+<td>**最大重试次数**。例如设为 `3`，则最多执行 ** 3次重试 **。达到上限后标记为最终失败，并触发 `allRetryTaskFinishNotify`。</td>
+</tr>
+<tr>
+<td>`delaySecond`</td>
+<td>`int`</td>
+<td>`5`</td>
+<td>❌ 否</td>
+<td>**首次执行的延迟时间（秒）**。任务创建后，不会立即执行，而是等待 `delaySecond` 秒后再首次尝试。适用于“稍后重试”场景。</td>
+</tr>
+<tr>
+<td>`intervalSecond`</td>
+<td>`Integer`</td>
+<td>—</td>
+<td>⚠️ 条件必填</td>
+<td>**基础间隔时间（秒）**。具体含义由 `nextPlanTimeStrategy` 决定：&lt;br&gt;• `FIXED`：每次间隔固定为此值&lt;br&gt;• `INCREMENT`：第 n 次间隔 = `intervalSecond × n`&lt;br&gt;• `FIBONACCI`：按斐波那契数列倍数增长&lt;br&gt;• `BACKOFF`：指数退避（如 2ⁿ × interval）&lt;br&gt;⚠️ 若使用非 `FIXED` 策略，此字段必须提供。</td>
+</tr>
+<tr>
+<td>`nextPlanTimeStrategy`</td>
+<td>`NextPlanTimeStrategyEnum`</td>
+<td>`FIXED`</td>
+<td>❌ 否</td>
+<td>**下次执行时间计算策略**：&lt;br&gt;• `FIXED`：固定间隔（最常用）&lt;br&gt;• `INCREMENT`：线性递增&lt;br&gt;• `FIBONACCI`：斐波那契增长（1,1,2,3,5...）&lt;br&gt;• `BACKOFF`：指数退避（适合应对瞬时抖动）</td>
+</tr>
+</tbody></table>
+<hr>
+<h3>📌 使用示例与策略对比</h3>
+<p>假设 <code>retryNum = 3</code>，<code>delaySecond = 2</code>，<code>intervalSecond = 5</code>：</p>
+<table>
+<thead><tr>
+<th>策略</th>
+<th>执行时间点（相对于任务创建时刻）</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>`FIXED`</td>
+<td>2s → 7s → 12s</td>
+</tr>
+<tr>
+<td>`INCREMENT`</td>
+<td>2s → 7s (5×1) → 17s (5×2)</td>
+</tr>
+<tr>
+<td>`FIBONACCI`</td>
+<td>2s → 7s (5×1) → 12s (5×1)</td>
+</tr>
+<tr>
+<td>`BACKOFF`</td>
+<td>2s → 7s (5×2⁰) → 17s (5×2¹)</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>💡 <strong>建议</strong>：</p>
+<ul>
+<li>网络调用失败 → 用 <code>BACKOFF</code></li>
+<li>依赖资源可能逐步恢复 → 用 <code>INCREMENT</code> 或 <code>FIBONACCI</code></li>
+<li>定时轮询状态 → 用 <code>FIXED</code></li>
+</ul>
+</blockquote>
+<hr>
+<h3>⚠️ 注意事项</h3>
+<ol>
+<li><strong><code>intervalSecond</code> 与策略强相关</strong>   若使用 <code>BACKOFF</code>、<code>FIBONACCI</code> 等动态策略，但未设置 <code>intervalSecond</code>，框架将无法计算下次执行时间，可能导致任务卡住。</li>
+</ol>
+<ol>
+<li><strong><code>delaySecond</code> ≠ <code>intervalSecond</code></strong> - <code>delaySecond</code> 只影响<strong>第一次执行</strong> - <code>intervalSecond</code> 影响<strong>后续重试间隔</strong></li>
+</ol>
+<h3>常见问题</h3>
+</body>
+</html>
