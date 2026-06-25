@@ -234,7 +234,7 @@ CREATE TABLE `retry_task` (
   `interval_second` int DEFAULT NULL COMMENT '执行间隔秒,如果不填写默认是600秒(十分钟执行一次)',
   `delay_second` int DEFAULT NULL COMMENT '初次创建任务延迟时间，默认是100秒后执行',
   `max_execute_time` int DEFAULT NULL COMMENT '任务最大执行时间',
-  `next_plan_time` datetime DEFAULT NULL COMMENT '下次执行时间',
+  `next_plan_time` datetime(3) DEFAULT NULL COMMENT '下次执行时间',
   `retry_num` int DEFAULT NULL COMMENT '重试次数',
   `creator` varchar(64) DEFAULT NULL COMMENT '创建者(默认是IP)',
   `executor` varchar(64) DEFAULT NULL COMMENT '执行者',
