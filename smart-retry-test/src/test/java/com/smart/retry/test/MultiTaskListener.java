@@ -8,8 +8,10 @@ import org.apache.commons.lang3.time.DateFormatUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 多任务并发测试监听器
@@ -23,17 +25,26 @@ public class MultiTaskListener implements RetryLinstener<TestParam> {
 
     private volatile CountDownLatch latch = new CountDownLatch(1);
 
-    private static  int DEFAULT_COUNT = 0;
+    private static AtomicInteger DEFAULT_COUNT = new AtomicInteger(0);
 
     @Override
     public ExecuteResultStatus consume(TestParam param) {
 
 
-        System.out.println( DateFormatUtils.format(new Date(), "yyyy-MM-dd HH:mm:ss.SSS")+ " " + (DEFAULT_COUNT++) + "多任务并发测试监听器执行"+ JSONObject.toJSONString(param));
+        int count = DEFAULT_COUNT.incrementAndGet();
+        System.out.println( DateFormatUtils.format(new Date(), "yyyy-MM-dd HH:mm:ss.SSS")+ " "+(count)+" " + "多任务并发测试监听器执行"+ JSONObject.toJSONString(param));
        // latch.countDown();
-        if(DEFAULT_COUNT == 3){
-            throw new RuntimeException("多任务并发测试监听器执行异常");
+
+        int index = param.getIndex();
+
+        try {
+            TimeUnit.MILLISECONDS.sleep(new Random().nextInt(50,200));
+        }catch (Exception e){
+            e.printStackTrace();
         }
+        /*if(index % 8 == 0){
+            throw new RuntimeException("test exception");
+        }*/
         return ExecuteResultStatus.FAIL;
     }
 

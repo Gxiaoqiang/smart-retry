@@ -35,9 +35,6 @@ public class SimpleContainer implements RetryContainer {
     /** 内存精准调度队列 */
     private static final DelayQueue<ScheduledTask> delayQueue = new DelayQueue<>();
 
-    /** 内存中去重集合，key = taskCode + "-" + uniqueKey */
-    private static final Set<String> inMemoryTaskKeys = ConcurrentHashMap.newKeySet();
-
     /** 调度线程 */
     private static Thread schedulerThread;
 
@@ -80,8 +77,7 @@ public class SimpleContainer implements RetryContainer {
         initTaskExecutor(smartConfigure);
 
         // 初始化预加载窗口
-        preloadWindowMs = (long) smartConfigure.getTaskFindInterval()
-            * smartConfigure.getScanPreloadMultiplier() * 1000L;
+        preloadWindowMs = (long) smartConfigure.getTaskFindInterval() * smartConfigure.getScanPreloadMultiplier() * 1000L;
 
         // Producer 兜底扫描线程（低频，仅加载到 DelayQueue）
         Thread producerTask = new Thread(new ProducerTask(), "smart-retry-producer");
@@ -114,7 +110,7 @@ public class SimpleContainer implements RetryContainer {
 
         int corePoolSize = smartConfigure.getExecutor().getCorePoolSize();
         int maxPoolSize = smartConfigure.getExecutor().getMaxPoolSize();
-        int queueSize = smartConfigure.getExecutor().getQueueCapacity();
+        int queueSize = smartConfigure.getMaxInMemory();
         String name = smartConfigure.getExecutor().getName();
         consumerQueue = new ArrayBlockingQueue<>(queueSize);
 
@@ -189,7 +185,8 @@ public class SimpleContainer implements RetryContainer {
      */
     public static boolean enqueue(RetryTask task) {
         String key = getUniqueKey(task);
-        if (!inMemoryTaskKeys.add(key)) {
+        //如果已经存在，直接返回
+        if(!RetryTaskCache.tryMark(key)){
             return false;
         }
         delayQueue.put(new ScheduledTask(task));
@@ -206,10 +203,18 @@ public class SimpleContainer implements RetryContainer {
         if (task == null || task.getNextPlanTime() == null) {
             return;
         }
+
+        // 防御：容器未启动时 preloadWindowMs = 0，回退到配置值计算
+        long effectiveWindowMs = preloadWindowMs;
+
         long nextPlanTime = task.getNextPlanTime().getTime();
-        long windowEnd = System.currentTimeMillis() + preloadWindowMs;
+        long windowEnd = System.currentTimeMillis() + effectiveWindowMs;
         if (nextPlanTime <= windowEnd) {
             enqueue(task);
+        } else if (smartConfigure != null && smartConfigure.shouldLogInfo()) {
+            LOGGER.info("[SimpleContainer#enqueueIfInWindow] 任务不在预加载窗口内，等待 Producer 兜底。"
+                + "taskId={}, nextPlanTime={}, windowEnd={}, preloadWindowMs={}",
+                task.getId(), task.getNextPlanTime(), windowEnd, effectiveWindowMs);
         }
     }
 
@@ -217,17 +222,23 @@ public class SimpleContainer implements RetryContainer {
      * 任务执行完毕后的回调
      * 注意：此时 DB 已更新 (status/retryNum/nextPlanTime)
      *
+     * <p>关键设计：不在方法开头移除 inMemoryTaskKeys，而是保留 key 作为"占位锁"，
+     * 阻止 Producer 在竞态窗口中重复加载同一任务。只有在确定不再重入队时才移除 key。
+     *
      * @param task 已执行完毕的任务
      */
     static void afterExecute(RetryTask task) {
+
         String key = getUniqueKey(task);
-        inMemoryTaskKeys.remove(key);
+        //先删除标识
+        RetryTaskCache.unmark(key);
+
 
         Integer status = task.getStatus();
         Integer retryNum = task.getRetryNum();
-
-        // 成功或重试次数耗尽，结束
-        if (RetryTaskStatus.SUCCESS.getCode().equals(status) || retryNum == null || retryNum <= 0) {
+        // 成功或重试次数耗尽 → 移除占位，结束
+        if (RetryTaskStatus.SUCCESS.getCode().equals(status)
+                || retryNum <= 0) {
             return;
         }
 
@@ -242,13 +253,20 @@ public class SimpleContainer implements RetryContainer {
         if (nextPlanTime == null) {
             return;
         }
-        boolean inWindow = nextPlanTime.getTime()
-                           <= System.currentTimeMillis() + preloadWindowMs;
 
-        if (inWindow) {
-            enqueue(task);
+        // 使用与 enqueueIfInWindow 一致的防御逻辑
+        boolean inWindow = isInWindow(nextPlanTime);
+        if(!inWindow){
+            return;
         }
-        // else: 窗口外，由 Producer 后续扫描加载
+        enqueue(task);
+    }
+
+    private static boolean isInWindow(Date nextPlanTime) {
+        long effectiveWindowMs = preloadWindowMs;
+        boolean inWindow = nextPlanTime.getTime()
+                           <= System.currentTimeMillis() + effectiveWindowMs;
+        return inWindow;
     }
 
     /**
@@ -277,7 +295,7 @@ public class SimpleContainer implements RetryContainer {
             }
             return true;
         } catch (Exception e) {
-            LOGGER.warn("[validateTaskInDB] check failed for task:{}", task.getId(), e);
+            LOGGER.warn("[validateTaskInDB#validateTaskInDB] check failed for task:{}", task.getId(), e);
             return false;
         }
     }
@@ -294,7 +312,7 @@ public class SimpleContainer implements RetryContainer {
                     RetryTask task = scheduled.getTask();
 
                     if (!validateTaskInDB(task)) {
-                        inMemoryTaskKeys.remove(getUniqueKey(task));
+                        RetryTaskCache.unmark(getUniqueKey(task));
                         continue;
                     }
 
@@ -324,16 +342,12 @@ public class SimpleContainer implements RetryContainer {
 
         @Override
         public void run() {
-            String uniqueKey = getUniqueKey(retryTask);
-
             try {
-
                 SmartInnovation innovation = new DefaultInnovation(retryTask, retryConfiguration);
                 innovation.invoke();
             } catch (Throwable e) {
-                LOGGER.error("[ConsumerTask-run error,retryTask:{} ", GsonTool.toJsonString(retryTask), e);
+                LOGGER.error("[ConsumerTask#run] consumer error,retryTask:{} ", GsonTool.toJsonString(retryTask), e);
             } finally {
-                RetryTaskCache.removeTaskFlag(uniqueKey);
                 afterExecute(retryTask);
             }
 
@@ -425,25 +439,32 @@ public class SimpleContainer implements RetryContainer {
 
         @Override
         public void run() {
-            while (SmartRetryExit.isExit()) {
 
+            LOGGER.info("[ProducerTask#run] start run producer task,sleepBaseTimeMilliseconds {}", sleepBaseTimeMilliseconds);
+            while (SmartRetryExit.isExit()) {
                 if (!SmartRetryRunFlag.getFlag()) {
                     sleepOneInterval();
                     continue;
                 }
 
                 try {
-                    int currentSize = inMemoryTaskKeys.size();
+                    int currentSize = RetryTaskCache.size();
                     int availableSlots = smartConfigure.getMaxInMemory() - currentSize;
                     if (availableSlots <= 0) {
-                        LOGGER.warn("[ProducerTask] 内存任务数达到上限 {}, 跳过本轮扫描",
-                            smartConfigure.getMaxInMemory());
+                        LOGGER.warn("[ProducerTask#run] 内存任务数达到上限 {}, 跳过本轮扫描,当前任务{}",
+                            smartConfigure.getMaxInMemory(),currentSize);
                         sleepOneInterval();
                         continue;
                     }
 
+                    // 防御：容器未完全初始化时 preloadWindowMs 可能为 0，使用配置值兜底
+                    long effectiveWindowMs = preloadWindowMs;
+                    if (effectiveWindowMs <= 0) {
+                        effectiveWindowMs = (long) smartConfigure.getTaskFindInterval()
+                            * smartConfigure.getScanPreloadMultiplier() * 1000L;
+                    }
                     Date maxNextPlanTime = new Date(
-                        System.currentTimeMillis() + preloadWindowMs);
+                        System.currentTimeMillis() + effectiveWindowMs);
                     List<RetryTask> allRetryTask = retryConfiguration
                         .getRetryTaskAcess()
                         .listRetryTask(maxNextPlanTime, Math.min(availableSlots, 500));
@@ -461,13 +482,12 @@ public class SimpleContainer implements RetryContainer {
                     }
 
                     if (smartConfigure.shouldLogInfo() && enqueued > 0) {
-                        LOGGER.info("[ProducerTask] 兜底扫描加载 {} 个任务到 DelayQueue, 内存中任务数: {}",
-                            enqueued, inMemoryTaskKeys.size());
+                        LOGGER.info("[ProducerTask#run] 兜底扫描加载 {} 个任务到 DelayQueue, 内存中任务数: {}",
+                            enqueued, RetryTaskCache.size());
                     }
-
                     sleepOneInterval();
                 } catch (Exception e) {
-                    LOGGER.error("[ProducerTask] error", e);
+                    LOGGER.error("[ProducerTask#run] producer task exception errMsg,{}",e.getMessage(), e);
                 }
             }
         }
@@ -483,19 +503,6 @@ public class SimpleContainer implements RetryContainer {
 
     // ========== 监控方法（测试 & 运维） ==========
 
-    /**
-     * 获取当前内存中的任务数量（inMemoryTaskKeys 大小）
-     */
-    public static int getInMemoryTaskCount() {
-        return inMemoryTaskKeys.size();
-    }
-
-    /**
-     * 获取 DelayQueue 中待调度的任务数量
-     */
-    public static int getDelayQueueSize() {
-        return delayQueue.size();
-    }
 
     // ========== 原有方法 ==========
 
@@ -539,13 +546,8 @@ public class SimpleContainer implements RetryContainer {
 
     private static boolean checkTaskExists(RetryTask retryTask) {
         String uniqueKey = getUniqueKey(retryTask);
-        Boolean exists = RetryTaskCache.retryTasks.putIfAbsent(uniqueKey, true);
-        //插入成功，则任务不存在
-        if(exists == null){
-            return false;
-        }
-        //插入失败，则任务已经存在
-        return true;
+        // tryMarkInMemory 返回 true = 标记成功（任务不存在），false = 已存在
+        return !RetryTaskCache.tryMark(uniqueKey);
     }
 
 }

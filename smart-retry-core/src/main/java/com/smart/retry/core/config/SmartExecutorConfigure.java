@@ -269,7 +269,6 @@ public class SmartExecutorConfigure {
         private String name = "smart-retry-executor";
         private int corePoolSize = Runtime.getRuntime().availableProcessors() + 1;
         private int maxPoolSize = Runtime.getRuntime().availableProcessors() * 2;
-        private int queueCapacity = 3000;
         private int keepAliveSeconds = 60;
 
         public String getName() {
@@ -306,16 +305,6 @@ public class SmartExecutorConfigure {
             this.maxPoolSize = maxPoolSize;
         }
 
-        public int getQueueCapacity() {
-            return queueCapacity;
-        }
-
-        public void setQueueCapacity(int queueCapacity) {
-            if (queueCapacity < 1) {
-                throw new IllegalArgumentException("queueCapacity must be greater than 0");
-            }
-            this.queueCapacity = queueCapacity;
-        }
 
         public int getKeepAliveSeconds() {
             return keepAliveSeconds;

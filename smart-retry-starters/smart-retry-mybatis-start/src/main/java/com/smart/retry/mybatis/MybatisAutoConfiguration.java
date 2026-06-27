@@ -44,7 +44,7 @@ import javax.sql.DataSource;
  * @author gwq
  */
 @AutoConfiguration
-@EnableConfigurationProperties(value  ={SmartConfigure.class})
+@EnableConfigurationProperties(value = {SmartConfigure.class})
 @ConditionalOnProperty(prefix = "spring.smart-retry.mybatis", name = "enabled",  matchIfMissing = true)
 public class MybatisAutoConfiguration extends CommonConfiguration
         implements ApplicationContextAware , EnvironmentAware {

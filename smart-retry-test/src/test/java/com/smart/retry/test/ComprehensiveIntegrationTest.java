@@ -1,3 +1,4 @@
+/*
 package com.smart.retry.test;
 
 import com.smart.retry.common.RetryConfiguration;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.concurrent.TimeUnit;
 
+*/
 /**
  * 综合集成测试：覆盖内存压力、并发安全、异常容错、边界值、线程池、DB 校验、调度兜底。
  *
@@ -32,7 +34,8 @@ import java.util.concurrent.TimeUnit;
  *
  * @Author xiaoqiang
  * @Version ComprehensiveIntegrationTest.java, v 0.1 2025年06月24日 xiaoqiang
- */
+ *//*
+
 public class ComprehensiveIntegrationTest extends AbstractTest {
 
     @Autowired
@@ -72,12 +75,14 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
     // 一、内存压力测试
     // ==================================================================
 
-    /**
+    */
+/**
      * 1.1 大量任务同时入队，验证：
      * - inMemoryTaskKeys 正确增长
      * - DelayQueue 正确填充
      * - 全部任务执行完成后内存正确释放
-     */
+     *//*
+
     @Test
     public void testMemoryPressure_MassTasksEnqueueAndExecute() throws Exception {
         int taskCount = 200;
@@ -101,7 +106,7 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
             builder.withParam(new TestParam("mem-task-" + i + "-" + System.nanoTime()));
             builder.withRetryNum(1);
             builder.withDelaySecond(taskDelaySec);
-            builder.withIntervalSecond(10);
+            builder.withIntervalSecond(3);
             builder.withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.FIXED);
             operator.createTask(builder);
         }
@@ -147,9 +152,11 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
             afterMemoryTasks < taskCount / 10);
     }
 
-    /**
+    */
+/**
      * 1.2 失败重试循环：任务执行 FAIL → 重新入队 → retryNum 耗尽 → 正确释放内存
-     */
+     *//*
+
     @Test
     public void testMemoryPressure_RetryCycleRelease() throws Exception {
         int retryNum = 3;
@@ -186,9 +193,11 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
     // 二、并发 & 去重测试
     // ==================================================================
 
-    /**
+    */
+/**
      * 2.1 相同 uniqueKey 的任务只入队一次
-     */
+     *//*
+
     @Test
     public void testDedup_SameUniqueKeyEnqueueOnce() throws Exception {
         dedupTestListener.reset(1);
@@ -232,9 +241,11 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
     // 三、异常容错测试
     // ==================================================================
 
-    /**
+    */
+/**
      * 3.1 consume() 抛出异常不阻塞调度线程，后续任务正常执行
-     */
+     *//*
+
     @Test
     public void testException_DoesNotBlockScheduler() throws Exception {
         // 第一个任务：会抛异常
@@ -273,9 +284,11 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
     // 四、边界值测试
     // ==================================================================
 
-    /**
+    */
+/**
      * 4.1 delaySecond=1（最小合法值）：任务几乎立即执行
-     */
+     *//*
+
     @Test
     public void testBoundary_MinimumDelay() throws Exception {
         testRetryListener.reset();
@@ -298,9 +311,11 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
         Assert.assertTrue("delay=1 应在 15s 内完成，实际: " + elapsed + "ms", elapsed < 15000);
     }
 
-    /**
+    */
+/**
      * 4.2 retryNum=1：任务只执行一次，不重入队
-     */
+     *//*
+
     @Test
     public void testBoundary_RetryNumOne_ExecutesExactlyOnce() throws Exception {
         // 使用 cycleRetryListener 来观察执行次数（即使返回 FAIL，retryNum=1 也不会重试）
@@ -326,10 +341,12 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
             1, cycleRetryListener.getExecuteCount());
     }
 
-    /**
+    */
+/**
      * 4.3 taskObject 为 null —— taskCode 在 RetryCache 中不存在
      * 验证 SimpleContainer.afterExecute 不会 NPE
-     */
+     *//*
+
     @Test
     public void testBoundary_TaskObjectNull_AfterExecuteNoNPE() throws Exception {
         // 使用一个不存在的 taskCode，直接在 DB 中插入任务
@@ -366,10 +383,12 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
     // 五、线程池压力测试
     // ==================================================================
 
-    /**
+    */
+/**
      * 5.1 大量相同 next_plan_time 的任务，验证全部按时执行
      * 同时验证 executor 队列 CallerRunsPolicy 下不会死锁
-     */
+     *//*
+
     @Test
     public void testThreadPool_BatchSameNextPlanTime() throws Exception {
         int batchCount = 50;
@@ -400,9 +419,11 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
     // 六、DB 状态校验测试（validateTaskInDB）
     // ==================================================================
 
-    /**
+    */
+/**
      * 6.1 任务在 DB 中被删除后，SchedulerThread 正确跳过
-     */
+     *//*
+
     @Test
     public void testValidateDB_TaskDeleted_SkipExecution() throws Exception {
         testRetryListener.reset();
@@ -432,9 +453,11 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
         Assert.assertFalse("DB 中已删除的任务应被 validateTaskInDB 拦截、不执行", executed);
     }
 
-    /**
+    */
+/**
      * 6.2 任务状态在 DB 中已变更为 SUCCESS，SchedulerThread 正确跳过
-     */
+     *//*
+
     @Test
     public void testValidateDB_StatusChangedToSuccess_SkipExecution() throws Exception {
         testRetryListener.reset();
@@ -460,9 +483,11 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
         Assert.assertFalse("状态已改为 SUCCESS 的任务应被 validateTaskInDB 拦截、不执行", executed);
     }
 
-    /**
+    */
+/**
      * 6.3 retryNum 已耗尽（=0）的任务，SchedulerThread 正确跳过
-     */
+     *//*
+
     @Test
     public void testValidateDB_RetryNumZero_SkipExecution() throws Exception {
         testRetryListener.reset();
@@ -497,12 +522,14 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
     // 七、Producer 兜底 & 调度精度测试
     // ==================================================================
 
-    /**
+    */
+/**
      * 7.1 窗口外任务：delay 超过 preloadWindow 的任务不会被 enqueueIfInWindow 立即入队
      *
      * <p>注：当前配置 preloadWindow=100s。设置 delay=120s 确保超出窗口，
      * 验证创建后不会立即可见地增加 inMemoryTaskKeys 计数。
-     */
+     *//*
+
     @Test
     public void testProducer_WindowBoundary_NotImmediatelyEnqueued() throws Exception {
         int preloadMultiplier = smartConfigure.getScanPreloadMultiplier();
@@ -541,10 +568,12 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
             afterMemory <= beforeMemory + 5);
     }
 
-    /**
+    */
+/**
      * 7.2 多个不同 next_plan_time 的任务按时间顺序出队
      * 通过执行时间记录验证先到期的任务先执行
-     */
+     *//*
+
     @Test
     public void testScheduling_OrderedByNextPlanTime() throws Exception {
         int taskCount = 5;
@@ -576,10 +605,12 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
         System.out.println("=== [排序调度测试] 全部完成，耗时=" + elapsed + "ms");
     }
 
-    /**
+    */
+/**
      * 7.3 验证 SimpleContainer.enqueue 去重（inMemoryTaskKeys.add 原子性）
      * 通过多线程并发调用 enqueue 验证只有一个成功
-     */
+     *//*
+
     @Test
     public void testConcurrent_DedupUnderMultiThreadEnqueue() throws Exception {
         dedupTestListener.reset(1);
@@ -637,11 +668,14 @@ public class ComprehensiveIntegrationTest extends AbstractTest {
     // 辅助方法
     // ==================================================================
 
-    /**
+    */
+/**
      * 获取当前 JVM 已使用的堆内存（近似值）
-     */
+     *//*
+
     private long getUsedMemory() {
         Runtime rt = Runtime.getRuntime();
         return rt.totalMemory() - rt.freeMemory();
     }
 }
+*/

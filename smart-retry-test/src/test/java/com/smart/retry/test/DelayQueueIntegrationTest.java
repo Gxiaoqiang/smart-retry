@@ -7,6 +7,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,7 +41,7 @@ public class DelayQueueIntegrationTest extends AbstractTest {
      */
     @Test
     public void testMultipleTasksConcurrent() throws Exception {
-        int taskCount = 10;
+        int taskCount = 600000;
         //multiTaskListener.reset(taskCount);
 
         long startTime = System.currentTimeMillis();
@@ -48,14 +49,19 @@ public class DelayQueueIntegrationTest extends AbstractTest {
         for (int i = 0; i < taskCount; i++) {
             RetryTaskBuilder<TestParam> builder = RetryTaskBuilder.of();
             builder.withTaskCode("test-multi-task");
-            builder.withParam(new TestParam("concurrent-task-" + i));
+            TestParam testParam = new TestParam();
+            testParam.setValue("concurrent-task-" + i);
+            testParam.setIndex(i);
+            builder.withParam(testParam);
             builder.withRetryNum(6);
-            builder.withDelaySecond(45);
-            builder.withIntervalSecond(15);
-            builder.withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.BACKOFF);
+            Random random = new Random();
+
+            builder.withDelaySecond(random.nextInt(1,50));
+            builder.withIntervalSecond(new  Random().nextInt(1,50));
+            builder.withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.FIXED);
 
             retryTaskOperator.createTask(builder);
-            TimeUnit.SECONDS.sleep(1);
+            //TimeUnit.SECONDS.sleep(15);
         }
 
        // boolean allExecuted = multiTaskListener.awaitExecution(30, TimeUnit.SECONDS);

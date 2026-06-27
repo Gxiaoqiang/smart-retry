@@ -20,7 +20,7 @@
     </modules>
 
     <properties>
-        <smart.retry.version>1.0.1</smart.retry.version>
+        <smart.retry.version>1.0.2</smart.retry.version>
         <maven.compiler.target>17</maven.compiler.target>
         <maven.compiler.source>17</maven.compiler.source>
         <java.version>17</java.version>

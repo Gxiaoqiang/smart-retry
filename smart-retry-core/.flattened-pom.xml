@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.smart.retry</groupId>
   <artifactId>smart-retry-core</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <description>smart-retry is a retry framework based on Spring AOP and AspectJ.</description>
   <licenses>
     <license>
@@ -23,7 +23,7 @@
     <dependency>
       <groupId>com.smart.retry</groupId>
       <artifactId>smart-retry-common</artifactId>
-      <version>1.0.1</version>
+      <version>1.0.2</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
