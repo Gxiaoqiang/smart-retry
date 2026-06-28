@@ -1,5 +1,6 @@
 package com.smart.retry.core;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,28 +18,28 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RetryTaskCache {
 
     /** 正在处理中的任务实例集合，key = taskCode + "-" + uniqueKey */
-    private static final Set<String> IN_MEMORY_TASKS = ConcurrentHashMap.newKeySet();
+    private static final Set<String> IN_MEMORY_TASKS = new HashSet<>();
 
     /**
      * 尝试将任务标记为"内存中"（首次入队/去重）。
      * @param taskKey taskCode + "-" + uniqueKey
      * @return true=标记成功（任务不存在），false=已在内存中
      */
-    public static boolean tryMark(String taskKey) {
+    public synchronized static boolean tryMark(String taskKey) {
         return IN_MEMORY_TASKS.add(taskKey);
     }
 
     /**
      * 移除任务的"内存中"标记。
      */
-    public static void unmark(String taskKey) {
+    public synchronized   static void unmark(String taskKey) {
         IN_MEMORY_TASKS.remove(taskKey);
     }
 
     /**
      * 当前内存中的任务实例总数。
      */
-    public static int size() {
+    public synchronized static int size() {
         return IN_MEMORY_TASKS.size();
     }
 

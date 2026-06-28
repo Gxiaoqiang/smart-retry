@@ -38,7 +38,7 @@ public class MultiTaskListener implements RetryLinstener<TestParam> {
         int index = param.getIndex();
 
         try {
-            TimeUnit.MILLISECONDS.sleep(new Random().nextInt(50,200));
+            TimeUnit.MILLISECONDS.sleep(50);
         }catch (Exception e){
             e.printStackTrace();
         }

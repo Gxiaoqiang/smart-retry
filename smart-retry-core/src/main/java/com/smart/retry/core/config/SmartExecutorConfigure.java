@@ -240,8 +240,8 @@ public class SmartExecutorConfigure {
     }
 
     public void setScanPreloadMultiplier(int scanPreloadMultiplier) {
-        if (scanPreloadMultiplier < 1) {
-            throw new IllegalArgumentException("scanPreloadMultiplier must be greater than 0");
+        if (scanPreloadMultiplier < 2) {
+            throw new IllegalArgumentException("scanPreloadMultiplier must be greater than 1");
         }
         this.scanPreloadMultiplier = scanPreloadMultiplier;
     }

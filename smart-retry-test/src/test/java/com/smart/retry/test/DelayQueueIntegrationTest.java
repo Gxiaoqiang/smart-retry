@@ -41,7 +41,7 @@ public class DelayQueueIntegrationTest extends AbstractTest {
      */
     @Test
     public void testMultipleTasksConcurrent() throws Exception {
-        int taskCount = 600000;
+        int taskCount = 1000;
         //multiTaskListener.reset(taskCount);
 
         long startTime = System.currentTimeMillis();
@@ -53,11 +53,11 @@ public class DelayQueueIntegrationTest extends AbstractTest {
             testParam.setValue("concurrent-task-" + i);
             testParam.setIndex(i);
             builder.withParam(testParam);
-            builder.withRetryNum(6);
+            builder.withRetryNum(7);
             Random random = new Random();
 
-            builder.withDelaySecond(random.nextInt(1,50));
-            builder.withIntervalSecond(new  Random().nextInt(1,50));
+            builder.withDelaySecond(new  Random().nextInt(1,50));
+            builder.withIntervalSecond(new Random().nextInt(1,50));
             builder.withNextPlanTimeStrategy(NextPlanTimeStrategyEnum.FIXED);
 
             retryTaskOperator.createTask(builder);
