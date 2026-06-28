@@ -36,3 +36,12 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Maven ###
+**/.flattened-pom.xml
+
+### Claude Code ###
+.claude/
+
+### AI-generated docs ###
+**/superpowers/
