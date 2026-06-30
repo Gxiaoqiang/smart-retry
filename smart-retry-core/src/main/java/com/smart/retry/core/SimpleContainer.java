@@ -317,7 +317,9 @@ public class SimpleContainer implements RetryContainer {
     }
 
     /**
-     * 调度线程：从 DelayQueue 中 take() 到期任务，校验后提交执行
+     * 调度线程：从 DelayQueue 中 take() 到期任务，仅做内存级分片校验后分发。
+     *
+     * <p>不做 DB 查询，保持调度路径轻量。完整 DB 校验下沉到 ConsumerTask 工作线程中。
      */
     class SchedulerThread implements Runnable {
         @Override
@@ -329,13 +331,17 @@ public class SimpleContainer implements RetryContainer {
                     batch.add(scheduled);
                     delayQueue.drainTo(batch, 100);  // 非阻塞取更多到期任务
 
-                    for (ScheduledTask task : batch) {
-                        if (!validateTaskInDB(task.getTask())) {
-                            RetryTaskCache.unmark(getUniqueKey(task.getTask()));
+                    for (ScheduledTask scheduledTask : batch) {
+                        RetryTask task = scheduledTask.getTask();
+
+                        // 仅做内存级分片检查，避免 DB 查询阻塞调度线程
+                        if (!checkShardingInMemory(task)) {
+                            RetryTaskCache.unmark(getUniqueKey(task));
                             continue;
                         }
+
                         CompletableFuture.runAsync(
-                                new ConsumerTask(task.getTask(), retryConfiguration),
+                                new ConsumerTask(task, retryConfiguration),
                                 consumerExecutor
                         );
                     }
@@ -347,6 +353,25 @@ public class SimpleContainer implements RetryContainer {
                 }
             }
         }
+    }
+
+    /**
+     * 内存级分片归属检查：当前实例是否负责该任务的分片。
+     *
+     * <p>仅使用 ShardingContextHolder 的内存数据，不查询 DB，
+     * 保证调度路径零 DB 开销。
+     *
+     * @param task 待执行任务
+     * @return true=当前实例负责该分片
+     */
+    private static boolean checkShardingInMemory(RetryTask task) {
+        List<Long> shardingIndexList = ShardingContextHolder.shardingIndex();
+        // shardingIndex() 永远返回非 null 的 List，为空表示分片未初始化
+        if (shardingIndexList.isEmpty()) {
+            // 分片未初始化，放行（由 ConsumerTask 的 validateTaskInDB 兜底）
+            return true;
+        }
+        return shardingIndexList.contains(task.getShardingKey());
     }
 
     static class ConsumerTask implements Runnable {
@@ -362,6 +387,12 @@ public class SimpleContainer implements RetryContainer {
         @Override
         public void run() {
             try {
+                // 在工作线程中做完整 DB 校验，不阻塞 SchedulerThread
+                if (!validateTaskInDB(retryTask)) {
+                    RetryTaskCache.unmark(getUniqueKey(retryTask));
+                    return;
+                }
+
                 SmartInnovation innovation = new DefaultInnovation(retryTask, retryConfiguration);
                 innovation.invoke();
             } catch (Throwable e) {
