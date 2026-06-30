@@ -43,7 +43,8 @@
         executor,
         max_execute_time,
         current_log_id,
-        unique_key
+        unique_key,
+        sharding_key
     </sql>
     <sql id="baseSelectSql">
         <trim prefixOverrides="AND">

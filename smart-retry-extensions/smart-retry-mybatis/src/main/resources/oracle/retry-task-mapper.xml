@@ -51,7 +51,8 @@
         executor,
         max_execute_time,
         current_log_id,
-        unique_key
+        unique_key,
+        sharding_key
     </sql>
 
     <!-- baseSelectSql SQL 片段保持不变，因为它主要是动态 SQL -->
