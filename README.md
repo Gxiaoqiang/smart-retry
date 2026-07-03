@@ -170,8 +170,6 @@ preloadWindow = taskFindInterval × scanPreloadMultiplier
 | `consumerQueue` | 线程池队列 | 3000（`ArrayBlockingQueue`） | 有界队列 + `CallerRunsPolicy`，队列满时调度线程同步执行 |
 | `afterExecute` 清理 | 执行完毕释放 | — | 任务执行完后立即从 `inMemoryTaskKeys` 移除，释放内存 |
 
-> ⚠️ **注意**：任务创建路径（`enqueueIfInWindow`）**不受** `maxInMemory` 限制。如果瞬时创建数万任务且都在窗口内，DelayQueue 会承载全部任务。建议通过业务层限流或合理设置 `maxInMemory` 来控制。
-
 #### 调度线程安全
 
 - `SchedulerThread` 单线程从 `DelayQueue.take()`，天然避免并发出队问题
