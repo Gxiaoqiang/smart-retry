@@ -141,9 +141,9 @@
 
 | 场景 | 旧版（纯轮询） | 新版（DelayQueue） |
 |------|--------------|-------------------|
-| 任务创建后首次执行（delay=5s） | 0~20s（等下一轮扫描） | **≈5s（秒级精准）** |
-| 失败重试入队（interval=10s） | 0~20s | **≈10s（策略计算精准）** |
-| 服务重启后恢复 | 0~20s | 0~`taskFindInterval`（兜底路径） |
+| 任务创建后首次执行（delay=5s） | 0~`taskFindInterval`（等下一轮扫描） | **≈5s（秒级精准）** |
+| 失败重试入队（interval=10s） | 0~`taskFindInterval` | **≈10s（策略计算精准）** |
+| 服务重启后恢复 | 0~`taskFindInterval` | 0~`taskFindInterval`（兜底路径） |
 | 大量任务同时到期 | 受限于线程池排队 | 受限于线程池排队（无变化） |
 | 系统时钟回拨 | 影响扫描间隔 | `DelayQueue.take()` 永久阻塞需等待下轮 Producer |
 
