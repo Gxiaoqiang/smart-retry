@@ -98,35 +98,35 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                     任务创建路径                              │
 │                                                             │
-│  createTask() / @RetryOnMethod                               │
+│  createTask() / @RetryOnMethod                              │
 │       │                                                     │
 │       ▼                                                     │
-│  ┌─────────────┐    nextPlanTime 在窗口内?    ┌───────────┐ │
-│  │ 写入 DB      │ ──────────────────────────▶ │ 写入 DB    │ │
-│  │ + 入 DelayQueue │  ✅ 是（精准路径）         │ （兜底路径） │ │
-│  └─────────────┘                              └───────────┘ │
-│                                                      │      │
-│                                                      ▼      │
+│  ┌─────────────┐    nextPlanTime 在窗口内?    ┌───────────┐  │
+│  │ 写入 DB      │ ──────────────────────────▶│ 写入 DB    │  │
+│  │ + 入 DelayQueue │  ✅ 是（精准路径）        │ （兜底路径）│  │
+│  └─────────────┘                             └───────────┘  │
+│                                                    │        │
+│                                                    ▼        │
 │                                              Producer 定时扫描│
-│                                              （每 taskFindInterval）│
+│                                        （每 taskFindInterval）│
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│                     DelayQueue 内存层                         │
+│                     DelayQueue 内存层                        │
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  ScheduledTask(nextPlanTime=12:00:03)                │   │
-│  │  ScheduledTask(nextPlanTime=12:00:05)   ← 按时间排序  │   │
+│  │  ScheduledTask(nextPlanTime=12:00:05)   ← 按时间排序   │   │
 │  │  ScheduledTask(nextPlanTime=12:00:08)                │   │
 │  │  ...                                                 │   │
 │  └──────────────────────────────────────────────────────┘   │
 │       │                                                     │
 │       │ take() 阻塞，到期自动唤醒                              │
 │       ▼                                                     │
-│  ┌──────────────┐    validateTaskInDB    ┌───────────────┐  │
-│  │ SchedulerThread│ ───────────────────▶ │ consumerExecutor│  │
-│  │ （精准触发）    │       DB 校验通过      │ （线程池执行）   │  │
-│  └──────────────┘                        └───────────────┘  │
+│  ┌───────────────┐    validateTaskInDB  ┌─────────────────┐ │
+│  │SchedulerThread│ ───────────────────▶ │ consumerExecutor│ │
+│  │ （精准触发）    │       DB 校验通过     │ （线程池执行）     │ │
+│  └───────────────┘                      └─────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -163,12 +163,12 @@ preloadWindow = taskFindInterval × scanPreloadMultiplier
 
 为防止任务洪峰导致 OOM，系统内置两层保护：
 
-| 保护机制 | 控制点 | 默认值 | 说明 |
-|---------|--------|--------|------|
-| `maxInMemory` | Producer 扫描上限 | 3000 | 内存中任务数达上限后，Producer 跳过本轮扫描，避免无限膨胀 |
-| `inMemoryTaskKeys` | 去重 + 容量感知 | — | 基于 `ConcurrentHashMap`，相同 `uniqueKey` 只入队一次 |
-| `consumerQueue` | 线程池队列 | 3000（`ArrayBlockingQueue`） | 有界队列 + `CallerRunsPolicy`，队列满时调度线程同步执行 |
-| `afterExecute` 清理 | 执行完毕释放 | — | 任务执行完后立即从 `inMemoryTaskKeys` 移除，释放内存 |
+| 保护机制 | 控制点 | 默认值                            | 说明 |
+|---------|--------|--------------------------------|------|
+| `maxInMemory` | Producer 扫描上限 | 3000(系统默认)                     | 内存中任务数达上限后，Producer 跳过本轮扫描，避免无限膨胀 |
+| `inMemoryTaskKeys` | 去重 + 容量感知 | —                              | 基于 `ConcurrentHashMap`，相同 `uniqueKey` 只入队一次 |
+| `consumerQueue` | 线程池队列 | 3000(系统默认)+100（`ArrayBlockingQueue`） | 有界队列 + `CallerRunsPolicy`，队列满时调度线程同步执行 |
+| `afterExecute` 清理 | 执行完毕释放 | —                              | 任务执行完后立即从 `inMemoryTaskKeys` 移除，释放内存 |
 
 #### 调度线程安全
 
