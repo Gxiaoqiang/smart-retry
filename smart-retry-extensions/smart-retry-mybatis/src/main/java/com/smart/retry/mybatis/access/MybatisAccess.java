@@ -1,6 +1,7 @@
 package com.smart.retry.mybatis.access;
 
 import com.smart.retry.common.RetryTaskAccess;
+import com.smart.retry.common.constant.RetryTaskStatus;
 import com.smart.retry.common.model.RetryTask;
 import com.smart.retry.mybatis.entity.RetryTaskDO;
 import com.smart.retry.mybatis.repo.RetryTaskRepo;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @Author xiaoqiang
@@ -36,7 +38,7 @@ public class MybatisAccess implements RetryTaskAccess {
     public List<RetryTask> listDeadTask(int maxExecuteTime) {
         long currentTime = System.currentTimeMillis();
 
-        Date deadTaskTime = new Date(currentTime - maxExecuteTime * 1000);
+        Date deadTaskTime = new Date(currentTime - maxExecuteTime * 1000L);
 
         List<RetryTaskDO> retryTaskDOS = retryTaskRepo.listAllDeadTask(deadTaskTime);
         if (CollectionUtils.isEmpty(retryTaskDOS)) {
@@ -111,6 +113,47 @@ public class MybatisAccess implements RetryTaskAccess {
     }
 
     @Override
+    public int claimRetryTask(Long id, String executor, Date nextPlanTime, Long shardingKey) {
+        // 仅设置认领所需字段，委托 Repo 执行单条原子 UPDATE（乐观锁 CAS）
+        RetryTaskDO retryTaskDO = new RetryTaskDO();
+        retryTaskDO.setId(id);
+        retryTaskDO.setExecutor(executor);
+        retryTaskDO.setNextPlanTime(nextPlanTime);
+        retryTaskDO.setShardingKey(shardingKey);
+        return retryTaskRepo.claimRetryTask(retryTaskDO);
+    }
+
+    @Override
+    public int markRetryTaskTerminal(Long id, int status, String executor, int retryNum, Date nextPlanTime, String attribute) {
+        // 仅设置终态写入所需字段，委托 Repo 执行单条原子 UPDATE（乐观锁 CAS 守卫）
+        RetryTaskDO retryTaskDO = new RetryTaskDO();
+        retryTaskDO.setId(id);
+        retryTaskDO.setStatus(status);
+        retryTaskDO.setExecutor(executor);
+        retryTaskDO.setRetryNum(retryNum);
+        retryTaskDO.setNextPlanTime(nextPlanTime);
+        retryTaskDO.setAttribute(attribute);
+        return retryTaskRepo.markRetryTaskTerminal(retryTaskDO);
+    }
+
+    @Override
+    public int markNullTaskObjectFail(Long id, String executor, int retryNum, String attribute) {
+        // 仅设置"未注册 taskCode"失败标记所需字段，委托 Repo 执行单条原子 UPDATE（乐观锁 CAS 守卫）
+        RetryTaskDO retryTaskDO = new RetryTaskDO();
+        retryTaskDO.setId(id);
+        retryTaskDO.setExecutor(executor);
+        retryTaskDO.setRetryNum(retryNum);
+        retryTaskDO.setAttribute(attribute);
+        return retryTaskRepo.markNullTaskObjectFail(retryTaskDO);
+    }
+
+    @Override
+    public int reviveDeadRetryTask(Long id, Date deadTaskTime) {
+        // 单条原子 UPDATE（乐观锁 CAS 守卫）：仅复活 RUNNING 且确认超时的任务
+        return retryTaskRepo.reviveDeadRetryTask(id, deadTaskTime);
+    }
+
+    @Override
     public void deleteRetryTask(long taskId) {
         retryTaskRepo.deleteRetryTask(taskId);
     }
@@ -122,9 +165,9 @@ public class MybatisAccess implements RetryTaskAccess {
 
     @Override
     public int deleteHistoryRetryTask(int clearBeforeDays, int limitRows) {
-        Date clearBeforeDate = new Date(System.currentTimeMillis() - clearBeforeDays * 24 * 60 * 60 * 1000);
+        Date clearBeforeDate = new Date(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(clearBeforeDays));
 
-        return retryTaskRepo.deleteByGmtCreate(clearBeforeDate, limitRows);
+        return retryTaskRepo.deleteByGmtCreate(clearBeforeDate, limitRows, RetryTaskStatus.SUCCESS.getCode());
 
     }
 }

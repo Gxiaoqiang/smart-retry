@@ -7,6 +7,7 @@ import com.smart.retry.common.constant.ExecuteResultStatus;
 import com.smart.retry.common.constant.RetryTaskStatus;
 import com.smart.retry.common.constant.RetryTaskTypeEnum;
 import com.smart.retry.common.exception.RetryException;
+import com.smart.retry.common.exception.RetryTaskClaimedException;
 import com.smart.retry.common.innovation.SmartInnovation;
 import com.smart.retry.common.model.RetryTask;
 import com.smart.retry.common.model.RetryTaskObject;
@@ -52,7 +53,27 @@ public class DefaultInnovation implements SmartInnovation {
     }
 
 
+    /**
+     * 原子认领任务（乐观锁 CAS）。
+     *
+     * <p>仅当任务在 DB 中仍为 WAITING(0)/FAIL(3) 且 {@code retry_num >= 1}
+     * （且调用方传入的 sharding_key 与任务本身一致）时，
+     * 原子地置为 RUNNING(1)、{@code retry_num - 1}，并写入 executor 与 next_plan_time。
+     * 并发（同 JVM delayQueue 残留 + 手动触发，或多实例 Producer）下只有一个调用方受影响行数为 1，
+     * 其余认领失败并抛出 {@link RetryTaskClaimedException}，从而保证业务方法至多被执行一次。
+     *
+     * <p>认领成功后同步内存状态，保证内存对象与 DB 一致（finally 写入的也是扣减后的值，幂等）。
+     * 认领失败抛出异常且在任何内存变更之前，无副作用。
+     */
     private void beforeProcessTask(RetryTask retryTask) {
+        int claimed = retryConfiguration.getRetryTaskAcess().claimRetryTask(
+                retryTask.getId(),
+                IpUtils.getIp(),
+                retryTask.getNextPlanTime(),
+                retryTask.getShardingKey());
+        if (claimed != 1) {
+            throw new RetryTaskClaimedException(retryTask.getId());
+        }
         retryTask.setStatus(RetryTaskStatus.RUNNING.getCode());
 
         Integer retryNum = retryTask.getRetryNum();
@@ -60,7 +81,6 @@ public class DefaultInnovation implements SmartInnovation {
             retryTask.setRetryNum(retryNum - 1);
         }
         retryTask.setExecutor(IpUtils.getIp());
-        retryConfiguration.getRetryTaskAcess().updateRetryTask(retryTask);
     }
 
     @Override
@@ -79,6 +99,11 @@ public class DefaultInnovation implements SmartInnovation {
             // 直接更新DB状态，不走finally块（避免notify NPE）
             return null;
         }
+        // 原子认领任务（CAS）：认领移出 try/finally。
+        // 认领失败抛 RetryTaskClaimedException 直接向外传播，绝不进入 finally，
+        // 避免败者把胜者的 RUNNING 覆盖成 FAIL，导致业务被重复执行。
+        beforeProcessTask(retryTask);
+
         Method method = taskObject.getMethod();
 
         Throwable throwable = null;
@@ -88,9 +113,6 @@ public class DefaultInnovation implements SmartInnovation {
         NotifyContext notifyContext = new NotifyContext();
         notifyContext.setRetryTask(retryTask);
         try {
-            //更新任务状态为执行中
-            beforeProcessTask(retryTask);
-
             Object result = doInvoke(taskObject, retryTask, method);
             RetryTaskTypeEnum retryTaskTypeEnum = taskObject.getRetryType();
 
@@ -128,21 +150,46 @@ public class DefaultInnovation implements SmartInnovation {
             if (executeResultStatus == ExecuteResultStatus.FAIL) {
                 retryTask.setStatus(RetryTaskStatus.FAIL.getCode());
             }
-            //System.out.println(GsonTool.toJsonString(retryTask));
-            retryConfiguration.getRetryTaskAcess().updateRetryTask(retryTask);
-            notify(taskObject, taskCode, notifyContext, executeResultStatus, throwable);
+            // 条件化写入终态（乐观锁 CAS 守卫）：仅当仍由本执行方持有租约（executor 匹配）
+            // 且 retry_num 无漂移（== 认领后扣减值）时生效，防止 stale 副本覆盖
+            // DeadLetterTask 复活后的状态（retry_num 已 +1）或新租约持有者写入的 RUNNING。
+            // 写入失败说明任务已被复活/转交他人，不触发通知，避免重复或错误通知。
+            int terminal = retryConfiguration.getRetryTaskAcess().markRetryTaskTerminal(
+                    retryTask.getId(),
+                    retryTask.getStatus(),
+                    retryTask.getExecutor(),
+                    retryTask.getRetryNum(),
+                    retryTask.getNextPlanTime(),
+                    retryTask.getAttribute());
+            if (terminal == 1) {
+                // 仅当终态写入成功（仍持有租约）时触发通知，避免重复或错误通知。
+                // 注意：不得在 finally 中 return（invoke 返回 Object，finally 的 return 会覆盖 try 返回值）。
+                notify(taskObject, taskCode, notifyContext, executeResultStatus, throwable);
+            } else {
+                LOGGER.warn("[DefaultInnovation#invoke] markTerminal skipped, task may be "
+                        + "revived or claimed by another executor, taskId:{}, status:{}",
+                        retryTask.getId(), retryTask.getStatus());
+            }
         }
     }
 
     private void processNullTaskObject() {
         Integer retryNum = retryTask.getRetryNum();
-        if (retryNum != null && retryNum >= 1) {
-            retryTask.setRetryNum(retryNum - 1);
+        int before = retryNum == null ? 0 : retryNum;
+        if (before >= 1) {
+            retryTask.setRetryNum(before - 1);
         }
         retryTask.setStatus(RetryTaskStatus.FAIL.getCode());
         retryTask.setExecutor(IpUtils.getIp());
         retryTask.setAttribute("taskObject is null");
-        retryConfiguration.getRetryTaskAcess().updateRetryTask(retryTask);
+        // 条件化更新（乐观锁 CAS 守卫）：仅当任务仍为 WAITING/FAIL 且 retry_num 与内存一致
+        // （扣减前值）时写 FAIL 并扣减一次，防止分片重叠窗口下覆盖他方已认领的 RUNNING 或已终态。
+        int updated = retryConfiguration.getRetryTaskAcess()
+                .markNullTaskObjectFail(retryTask.getId(), IpUtils.getIp(), before, "taskObject is null");
+        if (updated != 1) {
+            LOGGER.warn("[DefaultInnovation#processNullTaskObject] mark fail skipped, "
+                    + "task may be claimed/revived, taskId:{}", retryTask.getId());
+        }
     }
 
 

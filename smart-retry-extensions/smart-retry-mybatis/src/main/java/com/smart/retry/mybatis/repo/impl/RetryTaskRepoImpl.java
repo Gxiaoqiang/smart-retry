@@ -66,6 +66,34 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
     }
 
     @Override
+    public int claimRetryTask(RetryTaskDO retryTask) {
+        // 关键：单条原子 UPDATE 直接透传，禁止先 selectById 再 update，
+        // 否则在"读取状态 -> 更新"之间会引入 TOCTOU 竞态窗口。
+        return retryTaskDao.claimTask(retryTask);
+    }
+
+    @Override
+    public int markRetryTaskTerminal(RetryTaskDO retryTask) {
+        // 关键：单条原子 UPDATE 直接透传，禁止先查后改，
+        // 守卫 executor + retry_num，防止 stale 副本覆盖复活状态/新租约。
+        return retryTaskDao.markTerminal(retryTask);
+    }
+
+    @Override
+    public int markNullTaskObjectFail(RetryTaskDO retryTask) {
+        // 关键：单条原子 UPDATE 直接透传，禁止先查后改，
+        // 守卫 status IN (0,3) + retry_num，防止覆盖他方已认领的 RUNNING。
+        return retryTaskDao.markNullTaskObjectFail(retryTask);
+    }
+
+    @Override
+    public int reviveDeadRetryTask(Long id, Date deadTaskTime) {
+        // 关键：单条原子 UPDATE 直接透传，禁止先查后改，
+        // 守卫 status = 1 + gmt_modified，防止复活已终态任务或覆盖刚写入的终态。
+        return retryTaskDao.reviveTask(id, deadTaskTime);
+    }
+
+    @Override
     public RetryTaskDO getRetryTask(long id) {
         return retryTaskDao.selectById(id);
     }
@@ -133,12 +161,13 @@ public class RetryTaskRepoImpl implements RetryTaskRepo {
     }
 
     @Override
-    public int deleteByGmtCreate(Date gmtCreate, int limitRows) {
+    public int deleteByGmtCreate(Date gmtCreate, int limitRows, int status) {
         int deleteCount = 0;
         while (true) {
             int deleteRows = retryTaskDao.deleteByGmtCreate(gmtCreate,
                     limitRows,
-                    ShardingContextHolder.shardingIndex());
+                    ShardingContextHolder.shardingIndex(),
+                    status);
             deleteCount += deleteRows;
             if (deleteRows < limitRows) {
                 break;

@@ -217,6 +217,73 @@
         where id = #{id,jdbcType=BIGINT}
     </update>
 
+    <!-- 原子认领任务（乐观锁 CAS）。
+         仅当任务仍为 WAITING(0)/FAIL(3) 且 retry_num >= 1（且分片归属一致）时，
+         原子地将 status 置为 RUNNING(1)、retry_num-1，并写入 executor 与 next_plan_time。
+         并发下只有一个调用方受影响行数为 1，其余返回 0。 -->
+    <update id="claimTask" parameterType="com.smart.retry.mybatis.entity.RetryTaskDO">
+        update retry_task
+        set status = 1,
+            retry_num = retry_num - 1,
+            executor = #{executor,jdbcType=VARCHAR},
+            next_plan_time = #{nextPlanTime,jdbcType=TIMESTAMP},
+            gmt_modified = CURRENT_TIMESTAMP
+        where id = #{id,jdbcType=BIGINT}
+          and status in (0, 3)
+          and retry_num &gt;= 1
+          and sharding_key = #{shardingKey,jdbcType=BIGINT}
+    </update>
+
+    <!-- 条件化写入终态（乐观锁 CAS 守卫）。
+         仅当任务仍由传入 executor 持有租约且 retry_num 与内存副本一致时，
+         原子写入终态 status 与 next_plan_time。防止 stale 副本覆盖 DeadLetterTask
+         复活后的状态（retry_num +1）或新租约持有者写入的 RUNNING（executor 变更）。 -->
+    <update id="markTerminal" parameterType="com.smart.retry.mybatis.entity.RetryTaskDO">
+        update retry_task
+        set status = #{status,jdbcType=TINYINT},
+            next_plan_time = #{nextPlanTime,jdbcType=TIMESTAMP},
+            gmt_modified = CURRENT_TIMESTAMP
+            <if test="attribute != null">
+                , attribute = #{attribute,jdbcType=LONGVARCHAR}
+            </if>
+        where id = #{id,jdbcType=BIGINT}
+          and executor = #{executor,jdbcType=VARCHAR}
+          and retry_num = #{retryNum}
+    </update>
+
+    <!-- 条件化标记"未注册 taskCode"任务为失败（乐观锁 CAS 守卫）。
+         仅当任务仍为 WAITING(0)/FAIL(3) 且 retry_num 与内存一致（扣减前值）时，
+         原子置为 FAIL(3) 并扣减一次 retry_num。防止分片重叠窗口下覆盖他方已认领的 RUNNING。 -->
+    <update id="markNullTaskObjectFail" parameterType="com.smart.retry.mybatis.entity.RetryTaskDO">
+        update retry_task
+        set status = 3,
+            retry_num = retry_num - 1,
+            executor = #{executor,jdbcType=VARCHAR},
+            <if test="attribute != null">
+                attribute = #{attribute,jdbcType=LONGVARCHAR},
+            </if>
+            gmt_modified = CURRENT_TIMESTAMP
+        where id = #{id,jdbcType=BIGINT}
+          and status in (0, 3)
+          and retry_num &gt;= 1
+          and retry_num = #{retryNum}
+    </update>
+
+    <!-- 条件化复活死信任务（乐观锁 CAS 守卫）。
+         仅当任务仍为 RUNNING(1) 且 gmt_modified < deadTaskTime（确认超时）时，
+         原子置为 WAITING(0)、retry_num +1 并清空 executor。
+         防止复活已终态任务，或覆盖认领方在超时窗口内刚写入的终态。 -->
+    <update id="reviveTask">
+        update retry_task
+        set status = 0,
+            retry_num = retry_num + 1,
+            executor = NULL,
+            gmt_modified = CURRENT_TIMESTAMP
+        where id = #{id,jdbcType=BIGINT}
+          and status = 1
+          and gmt_modified &lt; #{deadTaskTime,jdbcType=TIMESTAMP}
+    </update>
+
     <delete id="deleteById" parameterType="java.lang.Long">
             delete
             from retry_task
@@ -230,6 +297,7 @@
             SELECT id
             FROM retry_task
             WHERE gmt_create &lt; #{gmtCreate}
+            and status = #{status}
             and sharding_key in
             (<foreach collection="shardingKeyList" index="index" separator="," item="shardingKeyTmp">
             #{shardingKeyTmp}

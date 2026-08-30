@@ -4,14 +4,16 @@ import com.smart.retry.common.RetryConfiguration;
 import com.smart.retry.common.RetryContainer;
 import com.smart.retry.common.SmartRetryExit;
 import com.smart.retry.common.SmartRetryRunFlag;
+import com.smart.retry.common.constant.ExecuteResultStatus;
 import com.smart.retry.common.constant.RetryTaskStatus;
-import com.smart.retry.common.innovation.SmartInnovation;
 import com.smart.retry.common.model.RetryTask;
-import com.smart.retry.common.utils.GsonTool;
+import com.smart.retry.common.exception.RetryTaskClaimedException;
+import com.smart.retry.common.model.TaskExecutionResult;
 import com.smart.retry.core.cache.RetryCache;
 import com.smart.retry.core.config.SmartExecutorConfigure;
 import com.smart.retry.core.innovation.DefaultInnovation;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.util.CollectionUtils;
@@ -19,7 +21,6 @@ import org.springframework.util.CollectionUtils;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.*;
 
 /**
@@ -149,7 +150,7 @@ public class SimpleContainer implements RetryContainer {
 
     }
 
-    private static String getUniqueKey(RetryTask retryTask) {
+    static String getUniqueKey(RetryTask retryTask) {
         return retryTask.getTaskCode() + "-" + retryTask.getUniqueKey();
     }
 
@@ -238,48 +239,58 @@ public class SimpleContainer implements RetryContainer {
     }
 
     /**
-     * 任务执行完毕后的回调
+     * 任务执行完毕后的回调。
      * 注意：此时 DB 已更新 (status/retryNum/nextPlanTime)
      *
      * <p>关键设计：不在方法开头移除 inMemoryTaskKeys，而是保留 key 作为"占位锁"，
      * 阻止 Producer 在竞态窗口中重复加载同一任务。只有在确定不再重入队时才移除 key。
      *
+     * <p>单次执行模型：失败且未到终态的任务放入 DelayQueue，
+     * 后续重试由 SchedulerThread/Producer 异步调度推进，不再同步循环。
+     *
      * @param task 已执行完毕的任务
+     * @return true=已重新入队等待异步重试，false=已到达终态（unmark）
      */
-    static void afterExecute(RetryTask task) {
+    static boolean afterExecute(RetryTask task) {
 
         String key = getUniqueKey(task);
-        //先删除标识
         Integer status = task.getStatus();
         // 成功或重试次数耗尽 → 移除占位，结束
         if (RetryTaskStatus.SUCCESS.getCode().equals(status)) {
             RetryTaskCache.unmark(key);
-            return;
+            return false;
         }
         Integer retryNum = task.getRetryNum();
         if (retryNum <= 0) {
             RetryTaskCache.unmark(key);
-            return;
+            return false;
         }
         // 如果taskCode在RetryCache中不存在，说明无法执行，不重新入队
         // 由Producer兜底扫描后续处理
         if (RetryCache.get(task.getTaskCode()) == null) {
             RetryTaskCache.unmark(key);
-            return;
+            return false;
         }
         Date nextPlanTime = task.getNextPlanTime();
         // 使用与 enqueueIfInWindow 一致的防御逻辑
         boolean inWindow = isInWindow(nextPlanTime);
         if (!inWindow) {
             RetryTaskCache.unmark(key);
-            return;
+            return false;
         }
-        //enqueue(task);
+
+        // 失败且未到终态：保留占位锁，放入 delayQueue 等待异步调度重试
         delayQueue.put(new ScheduledTask(task));
+        return true;
     }
 
     private static boolean isInWindow(Date nextPlanTime) {
         long effectiveWindowMs = preloadWindowMs;
+        // 防御：容器未启动时 preloadWindowMs 为 0，回退到配置值计算
+        if (effectiveWindowMs <= 0) {
+            effectiveWindowMs = (long) smartConfigure.getTaskFindInterval()
+                    * smartConfigure.getScanPreloadMultiplier() * 1000L;
+        }
         boolean inWindow = nextPlanTime.getTime()
                 <= System.currentTimeMillis() + effectiveWindowMs;
         return inWindow;
@@ -291,7 +302,7 @@ public class SimpleContainer implements RetryContainer {
      * @param task 待执行任务
      * @return true=可以执行，false=跳过该任务
      */
-    private static boolean validateTaskInDB(RetryTask task) {
+    static boolean validateTaskInDB(RetryTask task) {
         try {
             RetryTask dbTask = retryConfiguration.getRetryTaskAcess().getRetryTask(task.getId());
             if (dbTask == null) {
@@ -374,37 +385,6 @@ public class SimpleContainer implements RetryContainer {
         return shardingIndexList.contains(task.getShardingKey());
     }
 
-    static class ConsumerTask implements Runnable {
-
-        private RetryTask retryTask;
-        private RetryConfiguration retryConfiguration;
-
-        public ConsumerTask(RetryTask retryTask, RetryConfiguration retryConfiguration) {
-            this.retryTask = retryTask;
-            this.retryConfiguration = retryConfiguration;
-        }
-
-        @Override
-        public void run() {
-            try {
-                // 在工作线程中做完整 DB 校验，不阻塞 SchedulerThread
-                if (!validateTaskInDB(retryTask)) {
-                    RetryTaskCache.unmark(getUniqueKey(retryTask));
-                    return;
-                }
-
-                SmartInnovation innovation = new DefaultInnovation(retryTask, retryConfiguration);
-                innovation.invoke();
-            } catch (Throwable e) {
-                LOGGER.error("[ConsumerTask#run] consumer error,retryTask:{} ", GsonTool.toJsonString(retryTask), e);
-            } finally {
-                afterExecute(retryTask);
-            }
-
-        }
-    }
-
-
     class ClearTask implements Runnable {
 
         @Override
@@ -451,22 +431,25 @@ public class SimpleContainer implements RetryContainer {
                     }
                     //将任务重新设置为待执行状态,
                     // TODO 考虑超时的任务是否需要在内存中做线程的中断
+                    // 统一超时判定时间点，避免循环处理期间时间漂移
+                    Date deadTaskTime = new Date(System.currentTimeMillis()
+                            - smartConfigure.getDeadTask().getTaskMaxExecuteTimeout() * 1000L);
                     for (RetryTask retryTask : allRetryTask) {
 
-                        RetryTask retryTaskDo = new RetryTask();
-                        retryTaskDo.setId(retryTask.getId());
-                        retryTaskDo.setStatus(RetryTaskStatus.WAITING.getCode());
-                        retryTaskDo.setRetryNum(retryTask.getRetryNum() + 1);
-                        retryConfiguration.getRetryTaskAcess().updateRetryTask(retryTaskDo);
-
-                        // 将复活的任务加入精准调度队列
-                        retryTask.setStatus(RetryTaskStatus.WAITING.getCode());
-                        retryTask.setNextPlanTime(new Date());
-                        SimpleContainer.enqueueIfInWindow(retryTask);
+                        // 条件化复活（乐观锁 CAS 守卫）：仅当任务仍为 RUNNING(1) 且
+                        // gmt_modified < deadTaskTime（确认超时）时才被复活，
+                        // 防止复活已终态任务，或覆盖认领方在超时窗口内刚写入的终态。
+                        int revived = retryConfiguration.getRetryTaskAcess()
+                                .reviveDeadRetryTask(retryTask.getId(), deadTaskTime);
+                        if (revived != 1) {
+                            // 已被处理（认领方已写终态 / 已被其他实例复活），跳过
+                            if (smartConfigure.shouldLogInfo()) {
+                                LOGGER.info("[DeadLetterTask] revive skipped, task:{}", retryTask.getId());
+                            }
+                        }
 
                     }
-                    //List<RetryTask> deadLetterTasks = retryTaskRepo.listDeadTask(smartConfigure.getDeadTask().getMaxExecuteTime());
-                    //List<RetryTask> deadLetterTasks = retryTaskRepo.findDeadLetterTasks();
+
                 } catch (Exception e) {
                     LOGGER.error("[SimpleContainer#DeadLetterTask]run error,error msg {} ", e.getMessage(), e);
 
@@ -579,19 +562,50 @@ public class SimpleContainer implements RetryContainer {
                                 RetryConfiguration retryConfiguration,
                                 SmartExecutorConfigure smartConfigure) {
         initTaskConsumerExecutor(smartConfigure);
+        // 释放 createTask 中 enqueueIfInWindow 预标记的去重 key
+        releaseAutoEnqueueMark(retryTask);
         doProduceTask(retryTask, retryConfiguration);
     }
 
-    static void invokeTaskSync(RetryTask retryTask,
-                               RetryConfiguration retryConfiguration) {
-        //任务存在则不处理，避免重复处理
+    /**
+     * 同步执行一次任务（不循环重试）。
+     * 在当前线程直接执行，仅执行一次。失败后的继续重试由 Producer/调度器异步推进。
+     *
+     * @param retryTask          待执行的任务
+     * @param retryConfiguration 重试配置
+     * @return 本次执行结果；null=未执行（被去重拦截 / getTriggerableTask 拒绝）
+     */
+    static TaskExecutionResult invokeTaskOnceSync(RetryTask retryTask,
+                                                  RetryConfiguration retryConfiguration) {
+        // 释放 createTask 中 enqueueIfInWindow 预标记的去重 key，
+        // 确保手动触发能获取执行权（避免被 auto-enqueue 的 tryMark 拦截）
+        releaseAutoEnqueueMark(retryTask);
+
         if (checkTaskExists(retryTask)) {
             if (smartConfigure.shouldLogInfo()) {
-                LOGGER.info("[SimpleContainer#invokeTaskSync]task exists,taskId:{}", retryTask.getId());
+                LOGGER.info("[SimpleContainer#invokeTaskOnceSync] task already executing, taskId:{}",
+                        retryTask.getId());
             }
-            return;
+            return null;
         }
-        new ConsumerTask(retryTask, retryConfiguration).run();
+        // 仅执行一次，后续重试由 afterExecute 放入 delayQueue 异步推进
+        ConsumerTask task = new ConsumerTask(retryTask, retryConfiguration);
+        task.run();
+        return task.getResult();
+    }
+
+    /**
+     * 释放 createTask 中 enqueueIfInWindow 预标记的去重 key。
+     * <p>createTask 通过 enqueueIfInWindow → enqueue → tryMark 预先标记任务，
+     * 导致紧跟其后的手动触发（invokeTaskOnceSync/Async）被去重拦截。
+     * 手动触发前先释放该标记，让 checkTaskExists 能够重新获取执行权。
+     *
+     * <p>注意：不删除 delayQueue 中的 ScheduledTask（太昂贵），
+     * SchedulerThread 取出后会因 tryMark 失败或 validateTaskInDB 失败而跳过。
+     */
+    private static void releaseAutoEnqueueMark(RetryTask retryTask) {
+        String key = getUniqueKey(retryTask);
+        RetryTaskCache.unmark(key);
     }
 
     private static boolean checkTaskExists(RetryTask retryTask) {
@@ -600,4 +614,78 @@ public class SimpleContainer implements RetryContainer {
         return !RetryTaskCache.tryMark(uniqueKey);
     }
 
+    /**
+     * 单次执行任务消费者。
+     *
+     * <p>只执行一轮：DB 校验 → 反射调用 → 回调 {@link SimpleContainer#afterExecute}。
+     * 执行失败且未到终态时，由 {@code afterExecute} 将任务重新放入 DelayQueue，
+     * 后续重试交给 SchedulerThread/Producer 异步调度，不再在当前线程循环。
+     *
+     * <p>同步/异步的区别仅在调用方线程（当前线程 {@code run()} vs 提交线程池），
+     * 本类不感知调用方，始终保持"单次执行"语义。
+     *
+     * @Author xiaoqiang
+     * @Version ConsumerTask.java, v 0.1 2025年08月27日 xiaoqiang
+     * @Description: TODO
+     */
+    public static class ConsumerTask implements Runnable {
+
+        private static final Logger LOGGER = LoggerFactory.getLogger(ConsumerTask.class);
+
+        private final RetryTask retryTask;
+        private final RetryConfiguration retryConfiguration;
+
+        /** run() 执行完毕后的结果；未执行（被校验/去重拒绝）时为 null */
+        private volatile TaskExecutionResult result;
+
+        public ConsumerTask(RetryTask retryTask, RetryConfiguration retryConfiguration) {
+            this.retryTask = retryTask;
+            this.retryConfiguration = retryConfiguration;
+        }
+
+        @Override
+        public void run() {
+            // 1. DB 校验：只放行 WAITING/FAIL + retryNum>0 + 分片归属
+            if (!validateTaskInDB(retryTask)) {
+                RetryTaskCache.unmark(getUniqueKey(retryTask));
+                this.result = null;
+                return;
+            }
+            // 2. 反射调用：捕获业务返回值；异常时业务结果置 null
+            Object businessResult = null;
+            try {
+                businessResult = new DefaultInnovation(retryTask, retryConfiguration).invoke();
+            } catch (RetryTaskClaimedException e) {
+                // 认领竞争失败：任务已由其他执行方接管（同 JVM 残留 delayQueue/手动触发，
+                // 或跨实例的 Producer），本实例不执行业务。
+                // 不调用 afterExecute，避免给胜者再制造一次冗余调度。
+                LOGGER.info("[ConsumerTask#run] retry task already claimed by other executor, skip, taskId:{}",
+                        retryTask.getId());
+                RetryTaskCache.unmark(getUniqueKey(retryTask));
+                this.result = null;
+                return;
+            } catch (Throwable e) {
+                LOGGER.error("[ConsumerTask#run] consumer error, taskId:{}", retryTask.getId(), e);
+            }
+            // 3. 终态→unmark；非终态→入队 delayQueue（保留占位锁）由调度器异步重试
+            afterExecute(retryTask);
+            // 4. 记录本次结果（状态以 DefaultInnovation 写入内存 task 的 status 为准）
+            this.result = new TaskExecutionResult(resolveStatus(retryTask), businessResult);
+        }
+
+        /**
+         * 获取本次执行结果。仅在 run() 执行完毕后有效；未执行时返回 null。
+         *
+         * @return 本次执行结果（status + businessResult），未执行时为 null
+         */
+        public TaskExecutionResult getResult() {
+            return result;
+        }
+
+        private static ExecuteResultStatus resolveStatus(RetryTask task) {
+            return RetryTaskStatus.SUCCESS.getCode().equals(task.getStatus())
+                    ? ExecuteResultStatus.SUCCESS
+                    : ExecuteResultStatus.FAIL;
+        }
+    }
 }

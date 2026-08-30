@@ -392,11 +392,14 @@ public void testInvokeTask() {
     retryTaskOperator.invokeTaskAsync(taskId);
 
     /**
-     *  同步触发任务
-     *  触发任务，同步执行任务，如果调用该方法，则任务会立即执行。同时会阻塞当前线程，直到任务完成。
-     *  可以作为领域事件的的同步通知，如订单创建成功后通知用户。
+     *  同步触发一次
+     *  触发任务，在当前线程立即执行一次，阻塞直到本次执行完成。
+     *  仅执行一次，失败后的后续重试由调度器（DelayQueue/Producer）异步推进。
+     *  返回本次执行结果 {@link TaskExecutionResult}；null 表示本次未执行
+     *  （任务不存在 / 状态不允许 / 重试次数耗尽 / 被去重拦截）。
+     *  可以作为领域事件的同步通知，如订单创建成功后通知用户。
      */
-    retryTaskOperator.invokeTaskSync(taskId);
+    TaskExecutionResult result = retryTaskOperator.invokeTaskOnceSync(taskId);
 }
 
 

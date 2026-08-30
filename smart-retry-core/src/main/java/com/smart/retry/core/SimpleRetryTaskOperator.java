@@ -6,7 +6,7 @@ import com.smart.retry.common.constant.RetryTaskStatus;
 import com.smart.retry.common.exception.RetryException;
 import com.smart.retry.common.model.RetryTask;
 import com.smart.retry.common.model.RetryTaskBuilder;
-import com.smart.retry.common.model.RetryTaskObject;
+import com.smart.retry.common.model.TaskExecutionResult;
 import com.smart.retry.common.serializer.SmartSerializer;
 import com.smart.retry.common.utils.GsonTool;
 import com.smart.retry.common.utils.IpUtils;
@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.lang.reflect.Method;
 
@@ -71,36 +72,65 @@ public class SimpleRetryTaskOperator<T> implements RetryTaskOperator<T> {
     }
 
     @Override
-    public void invokeTaskSync(long taskId) {
-        RetryTask retryTask = getRetryTask(taskId);
-        if (retryTask == null) return;
-        SimpleContainer.invokeTaskSync(retryTask, retryConfiguration);
-    }
-
-    private RetryTask getRetryTask(long taskId) {
-        RetryTask retryTask = retryConfiguration.getRetryTaskAcess().getRetryTask(taskId);
-        if (retryTask == null) {
-            LOGGER.warn("[RetryTaskRepoImpl#updateRetryTask]retryTask not exists, id:{}", taskId);
-            return null;
-        }
-        Integer taskStatus = retryTask.getStatus();
-        if (!taskStatus.equals( RetryTaskStatus.WAITING.getCode())) {
-            LOGGER.warn("[RetryTaskRepoImpl#updateRetryTask]retryTask status is not WAITING, id:{}", taskId);
-            return null;
-        }
-        int retryNum = retryTask.getRetryNum();
-        if (retryNum <= 0) {
-            LOGGER.warn("[RetryTaskRepoImpl#updateRetryTask]retryTask retryNum is less than 0, id:{}", taskId);
-            return null;
-        }
-        return retryTask;
+    public TaskExecutionResult invokeTaskOnceSync(long taskId) {
+        warnIfInTransaction("invokeTaskOnceSync");
+        RetryTask retryTask = getTriggerableTask(taskId);
+        if (retryTask == null) return null;
+        return SimpleContainer.invokeTaskOnceSync(retryTask, retryConfiguration);
     }
 
     @Override
     public void invokeTaskAsync(long taskId) {
-        RetryTask retryTask = getRetryTask(taskId);
+        warnIfInTransaction("invokeTaskAsync");
+        RetryTask retryTask = getTriggerableTask(taskId);
         if (retryTask == null) return;
-        SimpleContainer.invokeTaskAsync(retryTask, retryConfiguration,smartExecutorConfigure);
+        SimpleContainer.invokeTaskAsync(retryTask, retryConfiguration, smartExecutorConfigure);
+    }
+
+    /**
+     * 获取可触发执行的任务。
+     * <p>与 ConsumerTask#validateTaskInDB（允许 WAITING+FAIL）保持一致，
+     * 手动触发允许 FAIL 状态，支持运维人员对失败任务进行补偿重试。
+     *
+     * @param taskId 任务 ID
+     * @return 可触发的任务，不存在/状态不允许/重试次数耗尽时返回 null
+     */
+    private RetryTask getTriggerableTask(long taskId) {
+        RetryTask retryTask = retryConfiguration.getRetryTaskAcess().getRetryTask(taskId);
+        if (retryTask == null) {
+            LOGGER.warn("[SimpleRetryTaskOperator#getTriggerableTask] task not found, id:{}", taskId);
+            return null;
+        }
+        Integer taskStatus = retryTask.getStatus();
+        // 与 ConsumerTask.validateTaskInDB 保持一致：允许 WAITING 和 FAIL
+        if (!RetryTaskStatus.WAITING.getCode().equals(taskStatus)
+                && !RetryTaskStatus.FAIL.getCode().equals(taskStatus)) {
+            LOGGER.warn("[SimpleRetryTaskOperator#getTriggerableTask] task status not allowed, id:{}, status:{}",
+                    taskId, taskStatus);
+            return null;
+        }
+        if (retryTask.getRetryNum() == null || retryTask.getRetryNum() <= 0) {
+            LOGGER.warn("[SimpleRetryTaskOperator#getTriggerableTask] retryNum exhausted, id:{}, retryNum:{}",
+                    taskId, retryTask.getRetryNum());
+            return null;
+        }
+        // FAIL 状态下重置为 WAITING，确保 ConsumerTask.validateTaskInDB 能通过
+        // 仅修改内存对象，beforeProcessTask 会立即写入 RUNNING 状态
+        if (RetryTaskStatus.FAIL.getCode().equals(taskStatus)) {
+            retryTask.setStatus(RetryTaskStatus.WAITING.getCode());
+        }
+        return retryTask;
+    }
+
+    /**
+     * 如果在活跃事务中调用，打印警告日志。
+     * invokeTask 内部的 DB 操作会参与外层事务，事务回滚会导致状态不一致。
+     */
+    private void warnIfInTransaction(String methodName) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            LOGGER.warn("[SimpleRetryTaskOperator#{}] 在活跃事务中调用，任务状态更新将参与外层事务。"
+                    + "建议在事务提交后调用。", methodName);
+        }
     }
 
     private void checkRetryCondition(RetryTask task) {

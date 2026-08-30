@@ -153,8 +153,9 @@ public class SmartExecutorConfigure {
 
         /**
          * 任务执行超时时间，单位秒
+         * 默认是6个小时
          */
-        private int taskMaxExecuteTimeout = 30 * 60;
+        private int taskMaxExecuteTimeout = 6 * 60 * 60;
 
         public Boolean getDeadTaskCheck() {
             return deadTaskCheck;
