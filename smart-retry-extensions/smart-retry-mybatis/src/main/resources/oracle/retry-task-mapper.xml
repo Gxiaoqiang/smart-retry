@@ -294,7 +294,7 @@
         where id = #{id,jdbcType=BIGINT}
           and status in (0, 3)
           and retry_num &gt;= 1
-          and sharding_key = #{shardingKey,jdbcType=BIGINT}
+        <!-- and sharding_key = #{shardingKey,jdbcType=BIGINT} -->
     </update>
 
     <!-- 条件化写入终态（乐观锁 CAS 守卫）。Oracle 使用 SYSDATE 与现有 update 保持一致。 -->

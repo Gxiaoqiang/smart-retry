@@ -231,13 +231,13 @@
         where id = #{id,jdbcType=BIGINT}
           and status in (0, 3)
           and retry_num &gt;= 1
-          and sharding_key = #{shardingKey,jdbcType=BIGINT}
-    </update>
+    <!-- and sharding_key = #{shardingKey,jdbcType=BIGINT} -->
+</update>
 
-    <!-- 条件化写入终态（乐观锁 CAS 守卫）。
-         仅当任务仍由传入 executor 持有租约且 retry_num 与内存副本一致时，
-         原子写入终态 status 与 next_plan_time。防止 stale 副本覆盖 DeadLetterTask
-         复活后的状态（retry_num +1）或新租约持有者写入的 RUNNING（executor 变更）。 -->
+<!-- 条件化写入终态（乐观锁 CAS 守卫）。
+    仅当任务仍由传入 executor 持有租约且 retry_num 与内存副本一致时，
+    原子写入终态 status 与 next_plan_time。防止 stale 副本覆盖 DeadLetterTask
+    复活后的状态（retry_num +1）或新租约持有者写入的 RUNNING（executor 变更）。 -->
     <update id="markTerminal" parameterType="com.smart.retry.mybatis.entity.RetryTaskDO">
         update retry_task
         set status = #{status,jdbcType=TINYINT},
