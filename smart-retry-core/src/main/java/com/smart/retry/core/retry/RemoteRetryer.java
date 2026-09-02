@@ -76,7 +76,7 @@ public class RemoteRetryer implements IRetryer {
         retryTask.setParameters(getArgs());
         retryTask.setUniqueKey(getUniqueKey(taskCode, getArgs()));
         retryTask.setShardingKey(ShardingContextHolder.getRandomShardingIndex());
-        retryTask.setNextPlanTimeStrategy(retryTask.getNextPlanTimeStrategy());
+        retryTask.setNextPlanTimeStrategy(retryable.nextPlanTimeStragy().getCode());
         retryTask.setIntervalSecond(retryable.intervalSecond());
 
         long firstNextExecuteTime = System.currentTimeMillis()+retryable.firstDelaySecond()*1000;

@@ -16,6 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
@@ -235,6 +237,34 @@ public class SimpleContainer implements RetryContainer {
             LOGGER.info("[SimpleContainer#enqueueIfInWindow] 任务不在预加载窗口内，等待 Producer 兜底。"
                             + "taskId={}, nextPlanTime={}, windowEnd={}, preloadWindowMs={}",
                     task.getId(), task.getNextPlanTime(), windowEnd, effectiveWindowMs);
+        }
+    }
+
+    /**
+     * 事务提交后入队（若当前在活跃事务中）；否则立即入队。
+     *
+     * <p>用于"业务数据 + 重试任务同事务持久化"的创建入口（如 createTask）：
+     * 内存入队属于非事务副作用，若在事务内直接入队，调用方事务回滚时会产生
+     * <ul>
+     *     <li><b>幽灵任务</b>：DB 无记录但 delayQueue 已入队，消费时认领失败被跳过，产生无谓调度；</li>
+     *     <li><b>脏去重 key</b>：{@link RetryTaskCache#tryMark(String)} 预标记的 key 无事务回调释放，
+     *     永久残留在内存去重集合，后续同 uniqueKey 的 createTask 被拦截无法入队，只能靠 Producer 兜底。</li>
+     * </ul>
+     * 通过 {@link TransactionSynchronization#afterCommit()} 将入队推迟到提交后，回滚时自然跳过。
+     * 无活跃事务（代理未生效 / 直接调用）时立即入队，保持兼容。
+     *
+     * @param task 已写入 DB 并回填 id 的重试任务
+     */
+    public static void enqueueAfterCommit(RetryTask task) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    enqueueIfInWindow(task);
+                }
+            });
+        } else {
+            enqueueIfInWindow(task);
         }
     }
 

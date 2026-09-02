@@ -65,8 +65,11 @@ public class SimpleRetryTaskOperator<T> implements RetryTaskOperator<T> {
         long taskId = retryConfiguration.getRetryTaskAcess().saveRetryTask(retryTask);
 
         retryTask.setId(taskId);
-        // 将任务加入 DelayQueue 精准调度（窗口内才入队）
-        SimpleContainer.enqueueIfInWindow(retryTask);
+        // 将任务加入 DelayQueue 精准调度（窗口内才入队）。
+        // 关键：内存入队延迟到事务提交后（enqueueAfterCommit）。
+        // 若在事务内直接入队，调用方事务回滚时会产生幽灵任务与脏去重 key，
+        // 且 RetryTaskCache 预标记的 key 无事务回调释放，会拦截后续同 uniqueKey 的入队。
+        SimpleContainer.enqueueAfterCommit(retryTask);
 
         return taskId;
     }
