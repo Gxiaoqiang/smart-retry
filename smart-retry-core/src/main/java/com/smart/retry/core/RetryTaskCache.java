@@ -30,6 +30,23 @@ public class RetryTaskCache {
     }
 
     /**
+     * 仅当内存任务数未达上限时，尝试将任务标记为"内存中"。
+     *
+     * <p>size 检查与 add 在同一把锁内原子完成，可保证并发下内存任务数不超过 max，
+     * 避免"先查 size 再 add"的 check-then-act 竞态导致超限。
+     *
+     * @param taskKey taskCode + "-" + uniqueKey
+     * @param max     内存任务数上限
+     * @return true=标记成功（任务不存在且未达上限），false=已在内存中或已达上限
+     */
+    public synchronized static boolean tryMarkIfBelowLimit(String taskKey, int max) {
+        if (IN_MEMORY_TASKS.size() >= max) {
+            return false;
+        }
+        return IN_MEMORY_TASKS.add(taskKey);
+    }
+
+    /**
      * 移除任务的"内存中"标记。
      */
     public synchronized   static void unmark(String taskKey) {

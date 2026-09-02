@@ -49,7 +49,7 @@ public class SimpleContainer implements RetryContainer {
     /**
      * 预加载窗口毫秒数
      */
-    private static long preloadWindowMs;
+    private static volatile long preloadWindowMs;
 
     private static RetryConfiguration retryConfiguration;
 
@@ -187,15 +187,16 @@ public class SimpleContainer implements RetryContainer {
     }
 
     /**
-     * 将任务加入 DelayQueue，自动去重
+     * 将任务加入 DelayQueue，自动去重。
+     * 内存上限（maxInMemory）在此处精确校验：size 检查与去重标记在同一把锁内原子完成。
      *
      * @param task 重试任务
-     * @return true=入队成功，false=已在内存中
+     * @return true=入队成功，false=未入队（已在内存中或已达内存上限）
      */
     public synchronized static boolean enqueue(RetryTask task) {
         String key = getUniqueKey(task);
-        //如果已经存在，直接返回
-        if (!RetryTaskCache.tryMark(key)) {
+        // 内存上限精确控制 + 去重：两者在同一把锁内原子完成，并发下内存任务数不会超过 maxInMemory
+        if (!RetryTaskCache.tryMarkIfBelowLimit(key, smartConfigure.getMaxInMemory())) {
             return false;
         }
         delayQueue.put(new ScheduledTask(task));
@@ -213,7 +214,8 @@ public class SimpleContainer implements RetryContainer {
             return;
         }
 
-        // 内存上限保护：超过 maxInMemory 时拒绝入队，任务留在 DB 由 Producer 兜底扫描
+        // 内存上限快速失败：超过 maxInMemory 时拒绝入队，任务留在 DB 由 Producer 兜底扫描。
+        // enqueue() 内还会在 synchronized 锁中做精确校验，保证并发下不超限。
         int currentSize = RetryTaskCache.size();
         int maxInMemory = smartConfigure.getMaxInMemory();
         if (currentSize >= maxInMemory) {
@@ -224,7 +226,6 @@ public class SimpleContainer implements RetryContainer {
             return;
         }
 
-        // 防御：容器未启动时 preloadWindowMs = 0，回退到配置值计算
         long effectiveWindowMs = preloadWindowMs;
 
         long nextPlanTime = task.getNextPlanTime().getTime();
